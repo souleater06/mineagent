@@ -1,0 +1,1352 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RubikFlow Agent Web Mock</title>
+  <style>
+    :root {
+      --bg: #f7f3ea;
+      --card: #fffdf8;
+      --line: #ded6c9;
+      --ink: #1f1f1f;
+      --muted: #66615a;
+      --green: #7bc96f;
+      --blue: #3b82f6;
+      --red: #ef4444;
+      --orange: #f97316;
+      --yellow: #f5c542;
+      --purple: #7c3aed;
+      --teal: #0ea5a8;
+      --shadow: 0 14px 34px rgba(63, 48, 27, 0.10);
+      --z-background: 0;
+      --z-panel: 1;
+      --z-content: 2;
+      --z-cube: 3;
+      --z-arrow: 4;
+      --z-highlight: 2;
+      --z-text: 5;
+      --z-overlay: 6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      width: 100vw;
+      height: 100vh;
+      display: grid;
+      place-items: center;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+
+    .stage {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      padding: 24px;
+      background: linear-gradient(180deg, #fbf8f0 0%, #f4efe4 100%);
+      overflow: hidden;
+      z-index: var(--z-background);
+    }
+
+    .app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: 26fr 40fr 34fr;
+      grid-template-rows: minmax(0, 1fr) 112px;
+      gap: 18px;
+      padding: 0;
+      overflow: hidden;
+      z-index: var(--z-content);
+      isolation: isolate;
+    }
+
+    .panel, .card, .tile, .timeline {
+      background: var(--card);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      border-radius: 24px;
+      padding: 20px;
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+      z-index: var(--z-panel);
+    }
+
+    .left-panel {
+      grid-column: 1;
+      grid-row: 1;
+      display: grid;
+      grid-template-rows: auto 50px 96px minmax(0, 1fr) 138px 52px;
+      gap: 12px;
+    }
+
+    .center-panel {
+      grid-column: 2;
+      grid-row: 1;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) 96px;
+      gap: 14px;
+    }
+
+    .right-panel {
+      grid-column: 3;
+      grid-row: 1;
+      display: grid;
+      grid-template-rows: 88px 116px 136px minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    .right-panel > .card,
+    .right-panel > .metrics {
+      position: relative;
+      z-index: var(--z-content);
+      min-height: 0;
+    }
+
+    .timeline {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      position: relative;
+      z-index: var(--z-panel);
+      border-radius: 22px;
+      padding: 18px 24px;
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      gap: 20px;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 38px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: 29px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 19px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .sub {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .center-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: start;
+      min-height: 0;
+    }
+
+    .state-switch {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      align-items: start;
+      position: relative;
+      z-index: var(--z-overlay);
+    }
+
+    .switch-btn {
+      appearance: none;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fffaf0;
+      color: var(--ink);
+      font-weight: 800;
+      font-size: 12px;
+      padding: 8px 12px;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(63, 48, 27, 0.08);
+      position: relative;
+      z-index: var(--z-text);
+    }
+
+    .switch-btn.active {
+      border-color: currentColor;
+      background: var(--active-soft);
+      color: var(--active);
+    }
+
+    .move-row {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 9px;
+    }
+
+    .move-chip {
+      position: relative;
+      height: 50px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      font-size: 21px;
+      font-weight: 900;
+      z-index: var(--z-content);
+    }
+
+    .move-chip.done {
+      background: #e8f7e4;
+      border-color: #a7d99d;
+    }
+
+    .move-chip.current {
+      background: var(--active-soft);
+      border: 3px solid var(--active);
+    }
+
+    .move-chip > span:not(.check),
+    .time-node > span:not(.check) {
+      position: relative;
+      z-index: var(--z-text);
+    }
+
+    .check {
+      position: absolute;
+      right: 7px;
+      bottom: 6px;
+      width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      background: #33a536;
+      font-size: 13px;
+      font-weight: 900;
+      z-index: var(--z-text);
+    }
+
+    .face-card {
+      position: relative;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: 78px 1fr;
+      align-items: center;
+      gap: 20px;
+      z-index: var(--z-content);
+    }
+
+    .face-chip {
+      height: 68px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: var(--active-soft);
+      border: 2px solid var(--active);
+      color: #111;
+      font-size: 36px;
+      font-weight: 950;
+      position: relative;
+      z-index: var(--z-highlight);
+    }
+
+    .face-text strong {
+      display: block;
+      font-size: 24px;
+      margin-bottom: 4px;
+      position: relative;
+      z-index: var(--z-text);
+    }
+
+    .face-text span {
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 650;
+      position: relative;
+      z-index: var(--z-text);
+    }
+
+    .cube-card {
+      position: relative;
+      min-height: 0;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: radial-gradient(circle at 50% 54%, #fffdf8 0%, #f7f2e8 74%);
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      isolation: isolate;
+      z-index: var(--z-content);
+    }
+
+    .cube-card::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 69%;
+      width: 210px;
+      height: 54px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(31, 31, 31, .22), rgba(31, 31, 31, 0) 68%);
+      transform: translateX(-50%);
+      z-index: var(--z-content);
+      pointer-events: none;
+    }
+
+    .cube-card::after {
+      content: "SMART CUBE";
+      position: absolute;
+      left: 20px;
+      bottom: 14px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(255, 253, 248, .72);
+      border: 1px solid rgba(222, 214, 201, .70);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      z-index: var(--z-text);
+      pointer-events: none;
+    }
+
+    .cube {
+      position: relative;
+      width: 260px;
+      height: 212px;
+      z-index: var(--z-cube);
+    }
+
+    .cube-shadow {
+      position: absolute;
+      left: 39px;
+      right: 30px;
+      bottom: 28px;
+      height: 44px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(31,31,31,.18), rgba(31,31,31,0) 70%);
+      z-index: var(--z-panel);
+      pointer-events: none;
+    }
+
+    .cube-base {
+      position: absolute;
+      left: 50%;
+      top: 55%;
+      width: 186px;
+      height: 136px;
+      border-radius: 18px;
+      border: 6px solid #111;
+      background: linear-gradient(135deg, #262626, #101010);
+      box-shadow: 10px 14px 0 rgba(0,0,0,.14), inset 0 0 0 2px rgba(255,255,255,.06);
+      transform: translate(-45%, -46%) rotate(-14deg) skewX(-10deg);
+      transform-origin: center;
+      z-index: var(--z-content);
+      pointer-events: none;
+    }
+
+    .cube-base::after {
+      content: "";
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 8px;
+      height: 18px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.07);
+    }
+
+    .cube-top {
+      position: absolute;
+      left: 50%;
+      top: 46%;
+      width: 186px;
+      height: 186px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 10px;
+      padding: 11px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #191919, #050505);
+      border: 6px solid #111;
+      box-shadow: 0 10px 18px rgba(0,0,0,.16), inset 0 0 0 2px rgba(255,255,255,.07);
+      transform: translate(-50%, -50%) rotate(-14deg) skewX(-10deg);
+      transform-origin: center;
+      z-index: var(--z-cube);
+    }
+
+    .cubelet {
+      position: relative;
+      border-radius: 10px;
+      border: 3px solid #171717;
+      background: linear-gradient(180deg, #a7eba0 0%, #70c866 58%, #4fa748 100%);
+      box-shadow:
+        inset 0 -7px rgba(0,0,0,.18),
+        inset 0 3px rgba(255,255,255,.38),
+        0 3px 0 #202020,
+        0 7px 12px rgba(0,0,0,.14);
+      z-index: var(--z-text);
+    }
+
+    .cubelet::after {
+      content: "";
+      position: absolute;
+      left: 9px;
+      top: 8px;
+      width: 18px;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.22);
+      pointer-events: none;
+    }
+
+    .cube-arrow {
+      position: absolute;
+      width: 96px;
+      height: 96px;
+      border: 5px solid var(--active);
+      border-left-color: transparent;
+      border-bottom-color: transparent;
+      border-radius: 50%;
+      right: 18px;
+      top: 35px;
+      transform: rotate(20deg);
+      z-index: var(--z-arrow);
+      filter: drop-shadow(0 7px 8px rgba(239, 68, 68, .18));
+      pointer-events: none;
+    }
+
+    .cube-arrow::after {
+      content: "";
+      position: absolute;
+      right: 1px;
+      bottom: 11px;
+      width: 0;
+      height: 0;
+      border-top: 12px solid transparent;
+      border-bottom: 12px solid transparent;
+      border-left: 19px solid var(--active);
+      transform: rotate(18deg);
+      z-index: var(--z-arrow);
+    }
+
+    .lens {
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      padding: 13px 16px;
+      min-height: 0;
+    }
+
+    .lens h3 {
+      margin-bottom: 8px;
+    }
+
+    .lens-grid {
+      display: grid;
+      grid-template-columns: 86px 1fr;
+      gap: 6px 14px;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .lens-label {
+      color: var(--muted);
+    }
+
+    .mapping-button {
+      border-radius: 14px;
+      border: 1px solid #b8d5f4;
+      background: #e8f3ff;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .opedia-card {
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      padding: 16px;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+    }
+
+    .tile-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 10px;
+      min-height: 0;
+      position: relative;
+      z-index: var(--z-content);
+      overflow: hidden;
+    }
+
+    .tile {
+      position: relative;
+      border-radius: 16px;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      place-items: center;
+      padding: 9px 6px 8px;
+      min-height: 0;
+      box-shadow: 0 9px 18px rgba(63, 48, 27, 0.06);
+      z-index: var(--z-content);
+    }
+
+    .tile.active {
+      background: var(--active-soft);
+      border: 3px solid var(--active);
+      z-index: var(--z-highlight);
+    }
+
+    .tile-icon {
+      width: 40px;
+      height: 34px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: var(--tile-color);
+      color: white;
+      font-size: 21px;
+      font-weight: 950;
+      box-shadow: inset 0 -4px rgba(0,0,0,.12);
+      position: relative;
+      z-index: var(--z-text);
+    }
+
+    .tile-label {
+      font-size: 13px;
+      font-weight: 900;
+      text-align: center;
+      position: relative;
+      z-index: var(--z-text);
+    }
+
+    .info-strip {
+      position: relative;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      align-items: center;
+      min-height: 0;
+      padding: 12px 18px;
+      gap: 12px;
+      z-index: var(--z-text);
+    }
+
+    .info-item {
+      min-width: 0;
+      text-align: center;
+      border-right: 1px solid var(--line);
+    }
+
+    .info-item:last-child {
+      border-right: none;
+    }
+
+    .info-label {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .info-value {
+      color: var(--active);
+      font-size: 20px;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .metric {
+      border-radius: 18px;
+      padding: 12px 8px;
+      text-align: center;
+      min-width: 0;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      font-weight: 900;
+      margin-bottom: 6px;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 950;
+    }
+
+    .agent-state {
+      border-radius: 18px;
+      padding: 14px 16px;
+      min-height: 0;
+    }
+
+    .state-row {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      align-items: center;
+      gap: 16px;
+      margin-top: 7px;
+      font-size: 15px;
+      font-weight: 850;
+    }
+
+    .state-label {
+      color: var(--muted);
+    }
+
+    .progress {
+      height: 10px;
+      border-radius: 999px;
+      background: #ddd8ce;
+      overflow: hidden;
+    }
+
+    .progress span {
+      display: block;
+      height: 100%;
+      width: var(--progress);
+      background: var(--active);
+      border-radius: inherit;
+    }
+
+    .pipeline {
+      border-radius: 18px;
+      padding: 11px 16px;
+      min-height: 0;
+      overflow: hidden;
+      z-index: var(--z-content);
+    }
+
+    .pipeline-grid {
+      margin-top: 9px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, 36px);
+      gap: 8px;
+      min-height: 0;
+    }
+
+    .pipe-chip {
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #fffaf0;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .pipe-chip.done {
+      background: #edf9e9;
+      border-color: #a7d99d;
+    }
+
+    .pipe-chip.active {
+      background: var(--active-soft);
+      border: 3px solid var(--active);
+    }
+
+    .output-card {
+      position: relative;
+      border-radius: 20px;
+      padding: 14px 16px 16px;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+      overflow: hidden;
+      z-index: var(--z-panel);
+      isolation: isolate;
+    }
+
+    .right-panel > .output-card {
+      z-index: var(--z-panel);
+    }
+
+    .output-scene {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 116px;
+      gap: 12px;
+      min-height: 0;
+      overflow: hidden;
+      z-index: var(--z-content);
+      isolation: isolate;
+    }
+
+    .model-window {
+      position: relative;
+      min-height: 0;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #f8f6ef 0%, #ece8dd 100%);
+      border: 1px solid var(--line);
+      overflow: hidden;
+      z-index: var(--z-content);
+      isolation: isolate;
+    }
+
+    .iso-model {
+      position: absolute;
+      left: 50%;
+      top: 54%;
+      width: 272px;
+      height: 214px;
+      transform: translate(-50%, -50%) rotateX(58deg) rotateZ(-35deg);
+      transform-style: preserve-3d;
+      z-index: var(--z-cube);
+    }
+
+    .base-grid {
+      position: absolute;
+      left: 31px;
+      top: 58px;
+      width: 202px;
+      height: 140px;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      gap: 3px;
+      padding: 3px;
+      background: #8a8c88;
+      border: 4px solid #696b68;
+      box-shadow: 14px 14px 0 #555855;
+    }
+
+    .base-cell {
+      background: #b9bab5;
+      border: 1px solid #969893;
+    }
+
+    .center-stack {
+      position: absolute;
+      left: 106px;
+      top: 80px;
+      width: 60px;
+      height: 60px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px;
+      padding: 4px;
+      background: #72736e;
+      box-shadow: 8px 8px 0 #575955;
+      z-index: var(--z-cube);
+    }
+
+    .center-stack span {
+      background: #b9bab5;
+      border: 1px solid #8d908b;
+    }
+
+    .logic-line {
+      position: absolute;
+      height: 6px;
+      border-radius: 99px;
+      background: var(--red);
+      z-index: var(--z-arrow);
+      box-shadow: 0 0 0 2px rgba(239,68,68,.18);
+    }
+
+    .logic-line.a { left: 58px; top: 130px; width: 140px; transform: rotate(8deg); }
+    .logic-line.b { left: 78px; top: 99px; width: 95px; transform: rotate(-42deg); }
+    .logic-line.c { left: 124px; top: 156px; width: 90px; transform: rotate(-30deg); }
+
+    .node {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--red);
+      border: 3px solid #fff4ee;
+      z-index: var(--z-highlight);
+      box-shadow: 0 3px 0 rgba(0,0,0,.16);
+    }
+
+    .node.n1 { left: 57px; top: 124px; }
+    .node.n2 { left: 126px; top: 92px; }
+    .node.n3 { left: 186px; top: 147px; }
+    .node.n4 { left: 198px; top: 86px; }
+
+    .shell {
+      position: absolute;
+      left: 72px;
+      top: 48px;
+      width: 140px;
+      height: 140px;
+      z-index: var(--z-cube);
+    }
+
+    .shell-piece {
+      position: absolute;
+      width: 23px;
+      height: 21px;
+      border-radius: 5px;
+      background: var(--orange);
+      box-shadow: 4px 4px 0 #c8500e, inset 0 -3px rgba(0,0,0,.13);
+    }
+
+    .lock-badge {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--yellow);
+      border: 3px solid #9a6d00;
+      font-size: 14px;
+      font-weight: 950;
+      z-index: var(--z-text);
+    }
+
+    .print-bed {
+      position: absolute;
+      left: 35px;
+      top: 170px;
+      width: 204px;
+      height: 18px;
+      background: #222;
+      border-radius: 6px;
+      z-index: var(--z-highlight);
+    }
+
+    .slice {
+      position: absolute;
+      left: 48px;
+      width: 176px;
+      height: 3px;
+      border-radius: 999px;
+      background: var(--blue);
+      z-index: var(--z-overlay);
+      opacity: .85;
+    }
+
+    .status-lane {
+      display: grid;
+      align-content: center;
+      gap: 14px;
+      min-width: 0;
+      position: relative;
+      z-index: var(--z-text);
+    }
+
+    .status-pill {
+      min-height: 48px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      padding: 10px 8px;
+      border: 2px solid var(--active);
+      background: var(--active-soft);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 950;
+      text-align: center;
+      position: relative;
+      z-index: var(--z-text);
+    }
+
+    .status-pill.final {
+      background: #e8f7e4;
+      border-color: #a7d99d;
+      color: #148a20;
+      font-size: 15px;
+    }
+
+    .timeline-label {
+      font-size: 19px;
+      font-weight: 950;
+      position: relative;
+      z-index: var(--z-text);
+    }
+
+    .timeline-nodes {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 14px;
+      align-items: center;
+      position: relative;
+      z-index: var(--z-content);
+    }
+
+    .time-node {
+      position: relative;
+      height: 56px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: #fffaf0;
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      align-items: center;
+      gap: 8px;
+      padding: 0 14px;
+      font-size: 18px;
+      font-weight: 950;
+      z-index: var(--z-content);
+    }
+
+    .time-node.done {
+      background: #edf9e9;
+      border-color: #a7d99d;
+    }
+
+    .time-node.active {
+      background: var(--active-soft);
+      border: 3px solid var(--active);
+      z-index: var(--z-highlight);
+    }
+
+    .time-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      color: white;
+      background: var(--node-color);
+      font-size: 16px;
+      position: relative;
+      z-index: var(--z-text);
+    }
+
+    .time-node .check {
+      right: 9px;
+      bottom: 8px;
+    }
+
+    body[data-state="logic"] {
+      --active: var(--red);
+      --active-soft: #fff0ed;
+    }
+
+    body[data-state="clay"] {
+      --active: var(--orange);
+      --active-soft: #fff2e6;
+    }
+
+    body[data-state="lock"] {
+      --active: #e7a800;
+      --active-soft: #fff5cf;
+    }
+
+    body[data-state="logic"] .shell,
+    body[data-state="logic"] .lock-badge,
+    body[data-state="logic"] .print-bed,
+    body[data-state="logic"] .slice,
+    body[data-state="clay"] .lock-badge,
+    body[data-state="clay"] .print-bed,
+    body[data-state="clay"] .slice,
+    body[data-state="lock"] .print-bed,
+    body[data-state="lock"] .slice {
+      display: none;
+    }
+
+    body[data-state="clay"] .logic-line,
+    body[data-state="clay"] .node,
+    body[data-state="lock"] .logic-line,
+    body[data-state="lock"] .node {
+      display: none;
+    }
+
+    @media (max-width: 1400px), (max-height: 850px) {
+      .stage {
+        padding: 16px;
+      }
+      .app {
+        gap: 14px;
+        grid-template-rows: minmax(0, 1fr) 96px;
+      }
+    }
+  </style>
+</head>
+<body data-state="logic">
+  <main class="stage" aria-label="RubikFlow Agent product mock">
+    <section class="app">
+      <aside class="panel left-panel">
+        <h2>Smart Cube Input</h2>
+
+        <div class="move-row" id="moveRow"></div>
+
+        <div class="face-card">
+          <div class="face-chip" id="faceChip">R</div>
+          <div class="face-text">
+            <strong id="faceTitle">R FACE</strong>
+            <span id="faceHint">Right Face Active</span>
+          </div>
+        </div>
+
+        <div class="cube-card">
+          <div class="cube-arrow" aria-hidden="true"></div>
+          <div class="cube" aria-label="Smart cube digital twin">
+            <div class="cube-shadow" aria-hidden="true"></div>
+            <div class="cube-base" aria-hidden="true"></div>
+            <div class="cube-top">
+              <span class="cubelet"></span><span class="cubelet"></span><span class="cubelet"></span>
+              <span class="cubelet"></span><span class="cubelet"></span><span class="cubelet"></span>
+              <span class="cubelet"></span><span class="cubelet"></span><span class="cubelet"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lens card">
+          <h3>Cube Command Lens</h3>
+          <div class="lens-grid">
+            <div class="lens-label">Move</div><div id="lensMove">R</div>
+            <div class="lens-label">Face</div><div id="lensFace">RIGHT</div>
+            <div class="lens-label">Command</div><div id="lensCommand">UPGRADE LOGIC</div>
+            <div class="lens-label">Output</div><div id="lensOutput">LOGIC NETWORK</div>
+          </div>
+        </div>
+
+        <div class="mapping-button" id="mappingButton">FACE TURN (RIGHT) -> UPGRADE LOGIC</div>
+      </aside>
+
+      <section class="panel center-panel">
+        <header class="center-header">
+          <div>
+            <h1>RubikFlow Agent</h1>
+            <p class="sub">cube move -> workflow tile -> agent output</p>
+          </div>
+          <div class="state-switch" aria-label="Keyframe state switch">
+            <button class="switch-btn active" data-state-btn="logic">LOGIC</button>
+            <button class="switch-btn" data-state-btn="clay">CLAY</button>
+            <button class="switch-btn" data-state-btn="lock">LOCK</button>
+          </div>
+        </header>
+
+        <div class="opedia-card">
+          <h3>Workflow-o-pedia</h3>
+          <div class="tile-grid" id="tileGrid"></div>
+        </div>
+
+        <div class="info-strip">
+          <div class="info-item">
+            <div class="info-label">Triggered Tile</div>
+            <div class="info-value" id="infoTile">JOINT</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Agent Command</div>
+            <div class="info-value" id="infoCommand">UPGRADE LOGIC</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Result</div>
+            <div class="info-value" id="infoResult">ACTIVE</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel right-panel">
+        <div class="metrics">
+          <div class="metric card"><div class="metric-label">SCORE</div><div class="metric-value" id="score">3600</div></div>
+          <div class="metric card"><div class="metric-label">COMBO</div><div class="metric-value" id="combo">x3</div></div>
+          <div class="metric card"><div class="metric-label">PRINTABILITY</div><div class="metric-value" id="printability">PROTO</div></div>
+        </div>
+
+        <div class="agent-state card">
+          <h3>Agent State</h3>
+          <div class="state-row"><span class="state-label">Status</span><span id="agentStatus">ACTIVE</span></div>
+          <div class="state-row"><span class="state-label">Mode</span><span id="agentMode">LOGIC</span></div>
+          <div class="state-row"><span class="state-label">Progress</span><div class="progress"><span id="progressBar"></span></div></div>
+        </div>
+
+        <div class="pipeline card">
+          <h3>Agent Function Pipeline</h3>
+          <div class="pipeline-grid" id="pipelineGrid"></div>
+        </div>
+
+        <div class="output-card card">
+          <h3>Output Preview</h3>
+          <div class="output-scene">
+            <div class="model-window">
+              <div class="iso-model">
+                <div class="base-grid" id="baseGrid"></div>
+                <div class="center-stack"><span></span><span></span><span></span><span></span></div>
+                <div class="logic-line a"></div>
+                <div class="logic-line b"></div>
+                <div class="logic-line c"></div>
+                <div class="node n1"></div>
+                <div class="node n2"></div>
+                <div class="node n3"></div>
+                <div class="node n4"></div>
+                <div class="shell" id="shell"></div>
+                <div class="lock-badge" style="left:58px;top:80px;">L</div>
+                <div class="lock-badge" style="left:178px;top:74px;">L</div>
+                <div class="lock-badge" style="left:194px;top:145px;">L</div>
+                <div class="lock-badge" style="left:91px;top:170px;">L</div>
+                <div class="print-bed"></div>
+                <div class="slice" style="top:80px;"></div>
+                <div class="slice" style="top:96px;"></div>
+                <div class="slice" style="top:112px;"></div>
+                <div class="slice" style="top:128px;"></div>
+                <div class="slice" style="top:144px;"></div>
+              </div>
+            </div>
+            <div class="status-lane">
+              <div class="status-pill" id="outputCommand">UPGRADE LOGIC</div>
+              <div class="status-pill final" id="outputResult">ACTIVE</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="timeline">
+        <div class="timeline-label">Workflow Timeline</div>
+        <div class="timeline-nodes" id="timelineNodes"></div>
+      </footer>
+    </section>
+  </main>
+
+  <script>
+    const modules = [
+      ["BLOCK", "B", "blue"], ["CLAY", "C", "orange"], ["VOXEL", "V", "teal"], ["JOINT", "J", "red"], ["MIRROR", "M", "red"],
+      ["SCALE", "S", "green"], ["COLOR", "C", "orange"], ["SCAN", "S", "teal"], ["AGENT", "A", "purple"], ["PRINT", "P", "purple"],
+      ["EXPORT", "E", "blue"], ["SHELL", "S", "teal"], ["HOLLOW", "H", "orange"], ["STACK", "S", "blue"], ["LOCK", "L", "yellow"],
+      ["LOOP", "L", "teal"], ["CHECK", "C", "green"], ["FIX", "F", "red"], ["BUILD", "B", "blue"], ["SAVE", "S", "blue"]
+    ];
+
+    const colorMap = {
+      blue: "#3b82f6",
+      red: "#ef4444",
+      orange: "#f97316",
+      yellow: "#f5c542",
+      purple: "#7c3aed",
+      teal: "#0ea5a8",
+      green: "#33a536"
+    };
+
+    const pipeline = ["SELECT", "BLOCK", "LOGIC", "CLAY", "LOCK", "PRINT"];
+    const moves = ["U", "F", "R", "F", "D", "B"];
+
+    const states = {
+      logic: {
+        moveIndex: 2,
+        move: "R",
+        face: "RIGHT",
+        faceTitle: "R FACE",
+        faceHint: "Right Face Active",
+        tile: "JOINT",
+        command: "UPGRADE LOGIC",
+        output: "LOGIC NETWORK",
+        result: "ACTIVE",
+        score: "3600",
+        combo: "x3",
+        printability: "PROTO",
+        mode: "LOGIC",
+        progress: "45%",
+        progressValue: "45%",
+        stage: "LOGIC"
+      },
+      clay: {
+        moveIndex: 3,
+        move: "F",
+        face: "FRONT",
+        faceTitle: "F FACE",
+        faceHint: "Front Face Active",
+        tile: "CLAY",
+        command: "ADD CLAY",
+        output: "CLAY SHELL",
+        result: "BUILDING",
+        score: "5200",
+        combo: "x4",
+        printability: "PROTO",
+        mode: "CLAY",
+        progress: "68%",
+        progressValue: "68%",
+        stage: "CLAY"
+      },
+      lock: {
+        moveIndex: 4,
+        move: "D",
+        face: "DOWN",
+        faceTitle: "D FACE",
+        faceHint: "Down Face Active",
+        tile: "LOCK",
+        command: "CONFIRM LOCK",
+        output: "LOCKED MODEL",
+        result: "LOCKED",
+        score: "6800",
+        combo: "x5",
+        printability: "STABLE",
+        mode: "LOCK",
+        progress: "84%",
+        progressValue: "84%",
+        stage: "LOCK"
+      }
+    };
+
+    const tileGrid = document.getElementById("tileGrid");
+    const pipelineGrid = document.getElementById("pipelineGrid");
+    const timelineNodes = document.getElementById("timelineNodes");
+    const moveRow = document.getElementById("moveRow");
+    const baseGrid = document.getElementById("baseGrid");
+    const shell = document.getElementById("shell");
+
+    modules.forEach(([label, glyph, color]) => {
+      const tile = document.createElement("div");
+      tile.className = "tile";
+      tile.dataset.tile = label;
+      tile.innerHTML = `<div class="tile-icon" style="--tile-color:${colorMap[color]}">${glyph}</div><div class="tile-label">${label}</div>`;
+      tileGrid.appendChild(tile);
+    });
+
+    pipeline.forEach((label) => {
+      const chip = document.createElement("div");
+      chip.className = "pipe-chip";
+      chip.dataset.pipeline = label;
+      chip.textContent = label;
+      pipelineGrid.appendChild(chip);
+    });
+
+    pipeline.forEach((label) => {
+      const node = document.createElement("div");
+      const colorKey = label === "LOGIC" ? "red" : label === "CLAY" ? "orange" : label === "LOCK" ? "yellow" : label === "PRINT" ? "purple" : "blue";
+      node.className = "time-node";
+      node.dataset.timeline = label;
+      node.innerHTML = `<span class="time-icon" style="--node-color:${colorMap[colorKey]}">${label[0]}</span><span>${label}</span>`;
+      timelineNodes.appendChild(node);
+    });
+
+    moves.forEach((move) => {
+      const chip = document.createElement("div");
+      chip.className = "move-chip";
+      chip.innerHTML = `<span>${move}</span>`;
+      moveRow.appendChild(chip);
+    });
+
+    for (let i = 0; i < 35; i += 1) {
+      const cell = document.createElement("span");
+      cell.className = "base-cell";
+      baseGrid.appendChild(cell);
+    }
+
+    const shellPositions = [
+      [25, 12], [52, 0], [80, 0], [108, 12],
+      [8, 39], [125, 39], [8, 67], [125, 67],
+      [25, 95], [52, 108], [80, 108], [108, 95]
+    ];
+    shellPositions.forEach(([left, top]) => {
+      const piece = document.createElement("div");
+      piece.className = "shell-piece";
+      piece.style.left = `${left}px`;
+      piece.style.top = `${top}px`;
+      shell.appendChild(piece);
+    });
+
+    function setState(name) {
+      const data = states[name];
+      document.body.dataset.state = name;
+
+      document.querySelectorAll(".switch-btn").forEach((button) => {
+        button.classList.toggle("active", button.dataset.stateBtn === name);
+      });
+
+      document.getElementById("faceChip").textContent = data.move;
+      document.getElementById("faceTitle").textContent = data.faceTitle;
+      document.getElementById("faceHint").textContent = data.faceHint;
+      document.getElementById("lensMove").textContent = data.move;
+      document.getElementById("lensFace").textContent = data.face;
+      document.getElementById("lensCommand").textContent = data.command;
+      document.getElementById("lensOutput").textContent = data.output;
+      document.getElementById("mappingButton").textContent = `FACE TURN (${data.face}) -> ${data.command}`;
+
+      document.getElementById("infoTile").textContent = data.tile;
+      document.getElementById("infoCommand").textContent = data.command;
+      document.getElementById("infoResult").textContent = data.result;
+      document.getElementById("score").textContent = data.score;
+      document.getElementById("combo").textContent = data.combo;
+      document.getElementById("printability").textContent = data.printability;
+      document.getElementById("agentStatus").textContent = "ACTIVE";
+      document.getElementById("agentMode").textContent = data.mode;
+      document.getElementById("progressBar").style.setProperty("--progress", data.progressValue);
+      document.getElementById("outputCommand").textContent = data.command;
+      document.getElementById("outputResult").textContent = data.result;
+
+      document.querySelectorAll(".tile").forEach((tile) => {
+        tile.classList.toggle("active", tile.dataset.tile === data.tile);
+      });
+
+      document.querySelectorAll(".pipe-chip").forEach((chip) => {
+        const idx = pipeline.indexOf(chip.dataset.pipeline);
+        const activeIdx = pipeline.indexOf(data.stage);
+        chip.classList.toggle("done", idx < activeIdx);
+        chip.classList.toggle("active", chip.dataset.pipeline === data.stage);
+      });
+
+      document.querySelectorAll(".time-node").forEach((node) => {
+        const idx = pipeline.indexOf(node.dataset.timeline);
+        const activeIdx = pipeline.indexOf(data.stage);
+        node.classList.toggle("done", idx < activeIdx);
+        node.classList.toggle("active", node.dataset.timeline === data.stage);
+        const existing = node.querySelector(".check");
+        if (existing) existing.remove();
+        if (idx < activeIdx) {
+          const check = document.createElement("span");
+          check.className = "check";
+          check.textContent = "v";
+          node.appendChild(check);
+        }
+      });
+
+      document.querySelectorAll(".move-chip").forEach((chip, index) => {
+        chip.classList.toggle("done", index < data.moveIndex);
+        chip.classList.toggle("current", index === data.moveIndex);
+        const existing = chip.querySelector(".check");
+        if (existing) existing.remove();
+        if (index < data.moveIndex) {
+          const check = document.createElement("span");
+          check.className = "check";
+          check.textContent = "v";
+          chip.appendChild(check);
+        }
+      });
+    }
+
+    document.querySelectorAll("[data-state-btn]").forEach((button) => {
+      button.addEventListener("click", () => setState(button.dataset.stateBtn));
+    });
+
+    setState("logic");
+  </script>
+</body>
+</html>

@@ -1,0 +1,1248 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RubikFlow Overlay MVP for csTimer</title>
+  <style>
+    :root {
+      --rf-panel: rgba(255, 255, 252, 0.96);
+      --rf-ink: #202124;
+      --rf-muted: #696d76;
+      --rf-line: #d8dce4;
+      --rf-blue-soft: #e7f0ff;
+      --rf-red: #e65050;
+      --rf-orange: #f4a044;
+      --rf-shadow: 0 18px 50px rgba(18, 24, 38, 0.18);
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      color: var(--rf-ink);
+      font-family: Arial, Helvetica, sans-serif;
+      background: #eef1f5;
+    }
+
+    .cstimer-mock {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding: 18px 460px 18px 18px;
+      box-sizing: border-box;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.9), transparent 30%),
+        linear-gradient(135deg, #eef5ef 0%, #f8f7f1 48%, #eef2f7 100%);
+    }
+
+    .cs-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 44px;
+      color: #242832;
+    }
+
+    .cs-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .cs-logo-mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 2px solid #242832;
+      border-radius: 7px;
+      background: #fff;
+      font-size: 16px;
+    }
+
+    .cs-toolbar {
+      display: flex;
+      gap: 8px;
+    }
+
+    .cs-tool {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #cdd4df;
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.72);
+      color: #394150;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .cs-main {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 18px;
+      min-height: 0;
+      padding-top: 18px;
+    }
+
+    .cs-scramble {
+      max-width: 920px;
+      padding: 14px 16px;
+      border: 1px solid rgba(58, 65, 78, 0.14);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: 0 10px 28px rgba(40, 48, 64, 0.08);
+    }
+
+    .cs-scramble-label,
+    .cs-panel-label {
+      margin-bottom: 7px;
+      color: #687080;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .cs-scramble-text {
+      color: #202124;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: clamp(16px, 2.2vw, 25px);
+      line-height: 1.35;
+      word-spacing: 0.2em;
+    }
+
+    .cs-timer-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 260px;
+    }
+
+    .cs-timer {
+      color: #202124;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: clamp(88px, 15vw, 190px);
+      line-height: 1;
+      font-weight: 400;
+      letter-spacing: 0;
+      text-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    .cs-timer-caption {
+      max-width: 520px;
+      padding: 8px 12px;
+      border: 1px solid rgba(58, 65, 78, 0.14);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.7);
+      color: #5f6878;
+      font-size: 13px;
+      line-height: 1.25;
+      text-align: center;
+    }
+
+    .cs-timer-subcaption {
+      max-width: 560px;
+      color: #778190;
+      font-size: 12px;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .cs-panels {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(150px, 1fr));
+      gap: 12px;
+      max-width: 920px;
+    }
+
+    .cs-panel {
+      min-height: 78px;
+      padding: 13px 14px;
+      box-sizing: border-box;
+      border: 1px solid rgba(58, 65, 78, 0.14);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.76);
+      box-shadow: 0 10px 28px rgba(40, 48, 64, 0.08);
+    }
+
+    .cs-panel-value {
+      color: #202124;
+      font-size: 24px;
+      line-height: 1.1;
+      font-weight: 700;
+    }
+
+    .cs-panel-note {
+      margin-top: 6px;
+      color: #697282;
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .cs-footer {
+      color: #697282;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .rubikflow-overlay {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      bottom: 16px;
+      width: min(420px, calc(100vw - 32px));
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px;
+      box-sizing: border-box;
+      border: 1px solid rgba(40, 47, 60, 0.14);
+      border-radius: 8px;
+      background: var(--rf-panel);
+      box-shadow: var(--rf-shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .rf-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 32px;
+    }
+
+    .rf-title h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.1;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .rf-subtitle {
+      margin-top: 2px;
+      color: var(--rf-muted);
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .rf-status-pill {
+      flex: 0 0 auto;
+      padding: 6px 8px;
+      border-radius: 999px;
+      color: #1f4b2c;
+      background: #e5f4e8;
+      border: 1px solid #b9dfc2;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .rf-workflow-note {
+      padding: 8px 10px;
+      border: 1px solid #d8dce4;
+      border-radius: 8px;
+      color: #4f5969;
+      background: #fff;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .rf-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .rf-field {
+      min-width: 0;
+      padding: 9px;
+      border: 1px solid var(--rf-line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .rf-label {
+      margin-bottom: 4px;
+      color: var(--rf-muted);
+      font-size: 10px;
+      line-height: 1.1;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .rf-value {
+      min-height: 22px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 16px;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    .rf-value.small {
+      font-size: 13px;
+      line-height: 1.35;
+      white-space: normal;
+    }
+
+    .rf-timeline {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 5px;
+      padding: 8px;
+      border: 1px solid var(--rf-line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .rf-step {
+      appearance: none;
+      min-height: 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 3px;
+      box-sizing: border-box;
+      border: 1px solid #d9dde6;
+      border-radius: 7px;
+      color: #4d5360;
+      background: #f6f7f9;
+      text-align: center;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .rf-step::before {
+      content: attr(data-key);
+      display: grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #e0e4ec;
+      color: #333945;
+      font-size: 10px;
+    }
+
+    .rf-step.active {
+      border-color: #2f6fff;
+      color: #172d61;
+      background: var(--rf-blue-soft);
+      box-shadow: inset 0 0 0 2px #5b8fff, 0 0 0 2px rgba(91, 143, 255, 0.16);
+    }
+
+    .rf-step.done {
+      border-color: #b9dfc2;
+      background: #edf8ef;
+      color: #215730;
+    }
+
+    .rf-step:focus-visible {
+      outline: 2px solid #2f6fff;
+      outline-offset: 2px;
+    }
+
+    .rf-preview {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 190px;
+      overflow: hidden;
+      border: 1px solid var(--rf-line);
+      border-radius: 8px;
+      background: linear-gradient(180deg, #fff 0%, #f2f5fa 100%);
+    }
+
+    .rf-preview-title {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      z-index: 2;
+      color: #454b55;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .rf-preview-stage {
+      position: absolute;
+      top: 30px;
+      left: 12px;
+      right: 12px;
+      z-index: 2;
+      color: var(--rf-muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .rf-scene {
+      position: absolute;
+      inset: 50px 18px 20px;
+    }
+
+    .rf-empty,
+    .rf-module,
+    .rf-block,
+    .rf-clay {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      box-sizing: border-box;
+    }
+
+    .rf-empty {
+      display: none;
+      bottom: 42px;
+      width: 180px;
+      height: 94px;
+      border: 2px dashed #c6ccd7;
+      border-radius: 8px;
+      color: #7a8392;
+      background: rgba(255, 255, 255, 0.52);
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      line-height: 94px;
+    }
+
+    .rf-module {
+      display: none;
+      bottom: 46px;
+      width: 186px;
+      height: 90px;
+      border: 2px solid #6f9cff;
+      border-radius: 8px;
+      background:
+        linear-gradient(90deg, rgba(111, 156, 255, 0.18) 0 33%, transparent 33% 66%, rgba(111, 156, 255, 0.18) 66%),
+        linear-gradient(180deg, rgba(111, 156, 255, 0.18) 0 33%, transparent 33% 66%, rgba(111, 156, 255, 0.18) 66%),
+        #fff;
+      box-shadow: inset 0 0 0 1px rgba(91, 143, 255, 0.35);
+    }
+
+    .rf-module::after {
+      content: "SELECTED MODULE";
+      position: absolute;
+      left: 50%;
+      bottom: -24px;
+      transform: translateX(-50%);
+      width: 150px;
+      color: #2c559a;
+      font-size: 10px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .rf-block,
+    .rf-clay {
+      display: none;
+      bottom: 30px;
+      width: 130px;
+      height: 78px;
+      border-radius: 7px;
+    }
+
+    .rf-block {
+      background: #aeb4bd;
+      border: 2px solid #747b86;
+      box-shadow: inset 0 12px 0 rgba(255, 255, 255, 0.28);
+    }
+
+    .rf-block::before,
+    .rf-block::after {
+      content: "";
+      position: absolute;
+      background: rgba(255, 255, 255, 0.38);
+    }
+
+    .rf-block::before {
+      left: 20px;
+      top: 0;
+      width: 2px;
+      height: 100%;
+    }
+
+    .rf-block::after {
+      left: 0;
+      top: 25px;
+      width: 100%;
+      height: 2px;
+    }
+
+    .rf-node,
+    .rf-signal {
+      display: none;
+      position: absolute;
+      z-index: 2;
+    }
+
+    .rf-node {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--rf-red);
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px #b52d2d;
+    }
+
+    .rf-node.n1 {
+      left: calc(50% - 70px);
+      bottom: 95px;
+    }
+
+    .rf-node.n2 {
+      left: calc(50% - 8px);
+      bottom: 70px;
+    }
+
+    .rf-node.n3 {
+      left: calc(50% + 52px);
+      bottom: 102px;
+    }
+
+    .rf-signal {
+      height: 3px;
+      background: var(--rf-red);
+      transform-origin: left center;
+      border-radius: 3px;
+      box-shadow: 0 0 12px rgba(230, 80, 80, 0.4);
+    }
+
+    .rf-signal.s1 {
+      left: calc(50% - 52px);
+      bottom: 101px;
+      width: 66px;
+      transform: rotate(21deg);
+    }
+
+    .rf-signal.s2 {
+      left: calc(50% + 8px);
+      bottom: 83px;
+      width: 58px;
+      transform: rotate(-26deg);
+    }
+
+    .rf-clay {
+      display: none;
+      width: 150px;
+      height: 95px;
+      bottom: 22px;
+      background: rgba(244, 160, 68, 0.88);
+      border: 2px solid #c06f24;
+      box-shadow: inset 0 14px 0 rgba(255, 223, 174, 0.42);
+    }
+
+    .rf-clay::before {
+      content: "";
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      top: 14px;
+      height: 9px;
+      border-radius: 99px;
+      background: rgba(255, 238, 213, 0.64);
+    }
+
+    .rf-lock {
+      display: none;
+      position: absolute;
+      left: 50%;
+      bottom: 118px;
+      width: 86px;
+      transform: translateX(-50%);
+      padding: 7px 8px;
+      border-radius: 7px;
+      background: #202124;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .rf-lock::before,
+    .rf-lock::after {
+      content: "LOCK";
+      position: absolute;
+      top: 28px;
+      color: #202124;
+      font-size: 9px;
+    }
+
+    .rf-lock::before {
+      left: -44px;
+    }
+
+    .rf-lock::after {
+      right: -44px;
+    }
+
+    .rf-bed,
+    .rf-slice {
+      display: none;
+      position: absolute;
+    }
+
+    .rf-bed {
+      left: 50%;
+      bottom: 10px;
+      width: 210px;
+      height: 22px;
+      transform: translateX(-50%);
+      border-radius: 8px;
+      background: #dfe4ec;
+      border: 2px solid #9aa3af;
+    }
+
+    .rf-slice {
+      left: 50%;
+      bottom: 50px;
+      width: 168px;
+      height: 104px;
+      transform: translateX(-50%);
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(91, 143, 255, 0.75) 0,
+        rgba(91, 143, 255, 0.75) 2px,
+        transparent 2px,
+        transparent 12px
+      );
+      border-radius: 8px;
+      pointer-events: none;
+    }
+
+    .rf-print-label {
+      display: none;
+      position: absolute;
+      right: 18px;
+      bottom: 14px;
+      padding: 6px 8px;
+      border-radius: 7px;
+      color: #184d28;
+      background: #dff4e3;
+      border: 1px solid #a7d6b2;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .rf-preview[data-stage="ready"] .rf-empty {
+      display: block;
+    }
+
+    .rf-preview[data-stage="select"] .rf-module {
+      display: block;
+    }
+
+    .rf-preview[data-stage="block"] .rf-block,
+    .rf-preview[data-stage="logic"] .rf-block,
+    .rf-preview[data-stage="clay"] .rf-block,
+    .rf-preview[data-stage="lock"] .rf-block,
+    .rf-preview[data-stage="print"] .rf-block {
+      display: block;
+    }
+
+    .rf-preview[data-stage="logic"] .rf-node,
+    .rf-preview[data-stage="logic"] .rf-signal,
+    .rf-preview[data-stage="clay"] .rf-node,
+    .rf-preview[data-stage="clay"] .rf-signal,
+    .rf-preview[data-stage="lock"] .rf-node,
+    .rf-preview[data-stage="lock"] .rf-signal,
+    .rf-preview[data-stage="print"] .rf-node,
+    .rf-preview[data-stage="print"] .rf-signal {
+      display: block;
+    }
+
+    .rf-preview[data-stage="clay"] .rf-clay,
+    .rf-preview[data-stage="lock"] .rf-clay,
+    .rf-preview[data-stage="print"] .rf-clay {
+      display: block;
+    }
+
+    .rf-preview[data-stage="lock"] .rf-lock,
+    .rf-preview[data-stage="print"] .rf-lock {
+      display: block;
+    }
+
+    .rf-preview[data-stage="print"] .rf-bed,
+    .rf-preview[data-stage="print"] .rf-slice,
+    .rf-preview[data-stage="print"] .rf-print-label {
+      display: block;
+    }
+
+    .rf-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    .rf-button {
+      height: 34px;
+      border: 1px solid #cbd2df;
+      border-radius: 7px;
+      background: #fff;
+      color: #202124;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .rf-button:hover {
+      background: var(--rf-blue-soft);
+      border-color: #8db7ff;
+    }
+
+    .rf-log {
+      height: 86px;
+      overflow: auto;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid var(--rf-line);
+      border-radius: 8px;
+      background: #202124;
+      color: #e9eef7;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 10px;
+      line-height: 1.35;
+    }
+
+    .rf-export-panel {
+      display: none;
+      min-height: 54px;
+      max-height: 92px;
+      overflow: auto;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #d8dce4;
+      border-radius: 8px;
+      background: #fff;
+      color: #202124;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 10px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+    }
+
+    .rf-export-panel.show {
+      display: block;
+    }
+
+    .rf-dev-test {
+      padding: 8px;
+      border: 1px solid var(--rf-line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .rf-dev-title {
+      margin-bottom: 7px;
+      color: #4f5969;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 10px;
+      line-height: 1.35;
+    }
+
+    .rf-dev-row {
+      display: grid;
+      grid-template-columns: 58px 1fr;
+      gap: 8px;
+    }
+
+    .rf-dev-input {
+      width: 100%;
+      height: 34px;
+      padding: 0 9px;
+      box-sizing: border-box;
+      border: 1px solid #cbd2df;
+      border-radius: 7px;
+      background: #fff;
+      color: #202124;
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .rf-help {
+      color: var(--rf-muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 820px) {
+      .rubikflow-overlay {
+        top: auto;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        width: auto;
+        max-height: 70vh;
+      }
+
+      .rf-preview {
+        min-height: 160px;
+      }
+
+      .cstimer-mock {
+        padding: 12px 12px calc(70vh + 24px) 12px;
+      }
+
+      .cs-panels {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="cstimer-mock" aria-label="Static csTimer Mock Area">
+    <header class="cs-topbar">
+      <div class="cs-logo">
+        <div class="cs-logo-mark">cs</div>
+        <div>csTimer</div>
+      </div>
+      <nav class="cs-toolbar" aria-label="Mock csTimer toolbar">
+        <div class="cs-tool">S</div>
+        <div class="cs-tool">T</div>
+        <div class="cs-tool">G</div>
+        <div class="cs-tool">O</div>
+      </nav>
+    </header>
+
+    <section class="cs-main">
+      <div class="cs-scramble">
+        <div class="cs-scramble-label">Scramble</div>
+        <div class="cs-scramble-text">R U R' F2 D L2 U' B R2 F' U2 L D2 B'</div>
+      </div>
+
+      <div class="cs-timer-wrap">
+        <div class="cs-timer" aria-label="Timer">0.00</div>
+        <div class="cs-timer-caption">csTimer mock timer / original speedcubing timer area</div>
+        <div class="cs-timer-subcaption">This left side is a static timer placeholder. RubikFlow Agent runs as the plugin overlay on the right.</div>
+      </div>
+
+      <div class="cs-panels" aria-label="Session summary">
+        <div class="cs-panel">
+          <div class="cs-panel-label">Session</div>
+          <div class="cs-panel-value">Mock 3x3</div>
+          <div class="cs-panel-note">Static MVP surface</div>
+        </div>
+        <div class="cs-panel">
+          <div class="cs-panel-label">ao5</div>
+          <div class="cs-panel-value">--.--</div>
+          <div class="cs-panel-note">No solve data yet</div>
+        </div>
+        <div class="cs-panel">
+          <div class="cs-panel-label">ao12</div>
+          <div class="cs-panel-value">--.--</div>
+          <div class="cs-panel-note">RubikFlow keys active</div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="cs-footer">
+      Static csTimer mock for RubikFlow Overlay MVP. Press U / F / R / D / B to simulate smart cube workflow input.
+    </footer>
+  </main>
+
+  <section class="rubikflow-overlay" aria-label="RubikFlow Agent Overlay">
+    <header class="rf-header">
+      <div class="rf-title">
+        <h1>RubikFlow Agent</h1>
+        <div class="rf-subtitle">MVP 4 event adapter and public API</div>
+      </div>
+      <div class="rf-status-pill">Mock Input</div>
+    </header>
+
+    <div class="rf-workflow-note">
+      Left side is the original speedcubing timer area. This overlay turns mock cube moves into RubikFlow Agent workflow commands.
+    </div>
+
+    <div class="rf-grid">
+      <div class="rf-field">
+        <div class="rf-label">Current Move</div>
+        <div id="rfMove" class="rf-value">No move</div>
+      </div>
+      <div class="rf-field">
+        <div class="rf-label">Active Face</div>
+        <div id="rfFace" class="rf-value">No active face</div>
+      </div>
+      <div class="rf-field">
+        <div class="rf-label">Workflow Stage</div>
+        <div id="rfStage" class="rf-value small">READY</div>
+      </div>
+      <div class="rf-field">
+        <div class="rf-label">Agent Command</div>
+        <div id="rfCommand" class="rf-value small">WAIT_FOR_MOVE</div>
+      </div>
+      <div class="rf-field" style="grid-column: 1 / -1;">
+        <div class="rf-label">Result / Output</div>
+        <div id="rfResult" class="rf-value small">Empty work area. Press U, F, R, D, or B to drive the workflow.</div>
+      </div>
+    </div>
+
+    <div id="rfTimeline" class="rf-timeline" aria-label="RubikFlow Timeline"></div>
+
+    <div id="rfPreview" class="rf-preview" data-stage="ready" aria-label="Output Preview">
+      <div class="rf-preview-title">Output Preview</div>
+      <div id="rfPreviewStage" class="rf-preview-stage">Ready for smart cube input</div>
+      <div class="rf-scene">
+        <div class="rf-empty">Empty work area</div>
+        <div class="rf-module"></div>
+        <div class="rf-slice"></div>
+        <div class="rf-bed"></div>
+        <div class="rf-clay"></div>
+        <div class="rf-block"></div>
+        <div class="rf-signal s1"></div>
+        <div class="rf-signal s2"></div>
+        <div class="rf-node n1"></div>
+        <div class="rf-node n2"></div>
+        <div class="rf-node n3"></div>
+        <div class="rf-lock">Locked</div>
+        <div class="rf-print-label">Print Ready</div>
+      </div>
+    </div>
+
+    <div class="rf-controls">
+      <button id="rfRunSequence" class="rf-button" type="button">Run U F R F D B</button>
+      <button id="rfReset" class="rf-button" type="button">Reset</button>
+      <button id="rfExport" class="rf-button" type="button">Export JSON</button>
+    </div>
+
+    <div id="rfLog" class="rf-log" aria-label="RubikFlow Event Log"></div>
+    <pre id="rfExportPanel" class="rf-export-panel" aria-label="Exported Workflow JSON"></pre>
+
+    <div class="rf-dev-test" aria-label="Developer Test">
+      <div class="rf-dev-title">Console test: window.RubikFlowAgent.receiveMove("R")</div>
+      <div class="rf-dev-row">
+        <input id="rfDevMove" class="rf-dev-input" type="text" maxlength="1" value="R" aria-label="Developer test move">
+        <button id="rfDevSend" class="rf-button" type="button">Send Move</button>
+      </div>
+    </div>
+
+    <div class="rf-help">
+      Press U / F / R / D / B while this page is focused.
+      This MVP does not connect to a real Bluetooth cube.
+    </div>
+  </section>
+
+  <script>
+    (function() {
+      "use strict";
+
+      var timeline = [
+        { key: "U", id: "select", label: "SELECT", stage: "SELECT", stageText: "SELECT MODULE", command: "SELECT_MODULE", output: "Module selected", result: "Selected module. Agent is ready to route the next cube action." },
+        { key: "F", id: "block", label: "BLOCK", stage: "BLOCK", stageText: "GENERATE BLOCK", command: "GENERATE_BLOCK", output: "Base block generated", result: "Grey base block generated in the output preview." },
+        { key: "R", id: "logic", label: "LOGIC", stage: "LOGIC", stageText: "UPGRADE LOGIC", command: "UPGRADE_LOGIC", output: "Logic network upgraded", result: "Grey base now includes red signal lines and red logic nodes." },
+        { key: "F", id: "clay", label: "CLAY", stage: "CLAY", stageText: "ADD CLAY SHELL", command: "ADD_CLAY_SHELL", output: "Clay shell added", result: "Orange clay / voxel shell added over the workflow structure." },
+        { key: "D", id: "lock", label: "LOCK", stage: "LOCK", stageText: "CONFIRM LOCK", command: "CONFIRM_LOCK", output: "Workflow locked", result: "Shell is locked. Workflow node is confirmed." },
+        { key: "B", id: "print", label: "PRINT", stage: "PRINT", stageText: "PREPARE PRINT", command: "PREPARE_PRINT", output: "Print ready", result: "Print bed, slicing lines, and PRINT READY state are active." }
+      ];
+
+      var faceMap = {
+        U: { face: "UP", label: "UP / Upper face" },
+        F: { face: "FRONT", label: "FRONT / Front face" },
+        R: { face: "RIGHT", label: "RIGHT / Right face" },
+        D: { face: "DOWN", label: "DOWN / Down face" },
+        B: { face: "BACK", label: "BACK / Back face" }
+      };
+
+      var state = {
+        currentIndex: -1,
+        currentMove: "No move",
+        currentFace: "No active face",
+        fCount: 0,
+        history: [],
+        events: []
+      };
+
+      var els = {};
+
+      function initElements() {
+        els.move = document.getElementById("rfMove");
+        els.face = document.getElementById("rfFace");
+        els.stage = document.getElementById("rfStage");
+        els.command = document.getElementById("rfCommand");
+        els.result = document.getElementById("rfResult");
+        els.timeline = document.getElementById("rfTimeline");
+        els.preview = document.getElementById("rfPreview");
+        els.previewStage = document.getElementById("rfPreviewStage");
+        els.log = document.getElementById("rfLog");
+        els.exportPanel = document.getElementById("rfExportPanel");
+        els.runSequence = document.getElementById("rfRunSequence");
+        els.reset = document.getElementById("rfReset");
+        els.export = document.getElementById("rfExport");
+        els.devMove = document.getElementById("rfDevMove");
+        els.devSend = document.getElementById("rfDevSend");
+      }
+
+      function buildTimeline() {
+        els.timeline.innerHTML = "";
+        timeline.forEach(function(step, index) {
+          var button = document.createElement("button");
+          button.type = "button";
+          button.className = "rf-step";
+          button.dataset.key = step.key;
+          button.dataset.index = String(index);
+          button.setAttribute("aria-label", step.key + " " + step.label);
+          button.textContent = step.label;
+          button.addEventListener("click", function() {
+            receiveMove(step.key, { source: "button", targetIndex: index });
+          });
+          els.timeline.appendChild(button);
+        });
+      }
+
+      function normalizeMove(move) {
+        return String(move || "").trim().toUpperCase().charAt(0);
+      }
+
+      function resolveMove(move) {
+        if (move == "U") {
+          return 0;
+        }
+        if (move == "R") {
+          return 2;
+        }
+        if (move == "D") {
+          return 4;
+        }
+        if (move == "B") {
+          return 5;
+        }
+        if (move == "F") {
+          state.fCount += 1;
+          if (state.fCount >= 2 || state.currentIndex >= 2) {
+            return 3;
+          }
+          return 1;
+        }
+        return state.currentIndex;
+      }
+
+      function render() {
+        var step = state.currentIndex >= 0 ? timeline[state.currentIndex] : null;
+        els.move.textContent = state.currentMove;
+        els.face.textContent = state.currentFace;
+        els.stage.textContent = step ? step.stageText : "READY";
+        els.command.textContent = step ? step.command : "WAIT_FOR_MOVE";
+        els.result.textContent = step ? step.result : "Empty work area. Press U, F, R, D, or B to drive the workflow.";
+        els.preview.dataset.stage = step ? step.id : "ready";
+        els.previewStage.textContent = step ? step.stage + " -> " + step.output : "READY -> Empty work area";
+
+        Array.prototype.forEach.call(els.timeline.children, function(node, index) {
+          node.classList.toggle("active", index == state.currentIndex);
+          node.classList.toggle("done", state.currentIndex >= 0 && index < state.currentIndex);
+        });
+      }
+
+      function syncFlowStateForIndex(index) {
+        if (index < 1) {
+          state.fCount = 0;
+        } else if (index < 3) {
+          state.fCount = 1;
+        } else {
+          state.fCount = 2;
+        }
+      }
+
+      function createEvent(move, step, source) {
+        var faceInfo = faceMap[move] || { face: "UNKNOWN", label: "Unknown face" };
+        var event = {
+          step: state.events.length + 1,
+          move: move,
+          face: faceInfo.face,
+          stage: step.stage,
+          command: step.command,
+          output: step.output,
+          timestamp: Date.now(),
+          source: source
+        };
+        return event;
+      }
+
+      function logEvent(event) {
+        var payload = {
+          adapter: "cstimer-rubikflow-overlay",
+          source: event.source,
+          event: "workflow.move",
+          step: event.step,
+          rawMove: event.move,
+          normalizedMove: event.move,
+          face: event.face,
+          activeFace: state.currentFace,
+          sequence: state.history.slice(),
+          workflowStage: event.stage,
+          agentCommand: event.command,
+          output: event.output,
+          timestamp: event.timestamp
+        };
+        state.events.push(event);
+        var div = document.createElement("div");
+        div.textContent = "[" + String(event.step).padStart(2, "0") + "] " + event.move + " -> " + event.command + " (" + event.source + ")";
+        div.title = JSON.stringify(payload);
+        els.log.appendChild(div);
+        els.log.scrollTop = els.log.scrollHeight;
+      }
+
+      function applyStep(index, source) {
+        if (index < 0 || index >= timeline.length) {
+          return null;
+        }
+        var step = timeline[index];
+        var move = step.key;
+        var faceInfo = faceMap[move] || { face: "UNKNOWN", label: "Unknown face" };
+        syncFlowStateForIndex(index);
+        state.currentMove = move;
+        state.currentFace = faceInfo.label;
+        state.currentIndex = index;
+        state.history.push(move);
+        render();
+        var event = createEvent(move, step, source);
+        logEvent(event);
+        return event;
+      }
+
+      function receiveMove(move, options) {
+        var normalizedMove = normalizeMove(move);
+        var settings = options || {};
+        var source = settings.source || "external";
+        var targetIndex = typeof settings.targetIndex == "number" ? settings.targetIndex : resolveMove(normalizedMove);
+        if (!/^[UFRDB]$/.test(normalizedMove)) {
+          return null;
+        }
+        if (!/^(keyboard|button|sequence|external)$/.test(source)) {
+          source = "external";
+        }
+        return applyStep(targetIndex, source);
+      }
+
+      function handleKeydown(event) {
+        var target = event.target;
+        if (target && /^(input|textarea|select)$/i.test(target.tagName || "")) {
+          return;
+        }
+        var key = String(event.key || "").toUpperCase();
+        if (!/^[UFRDB]$/.test(key)) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        receiveMove(key, { source: "keyboard" });
+      }
+
+      function resetState() {
+        state.currentIndex = -1;
+        state.currentMove = "No move";
+        state.currentFace = "No active face";
+        state.fCount = 0;
+        state.history = [];
+        state.events = [];
+        els.log.innerHTML = "";
+        els.exportPanel.textContent = "";
+        els.exportPanel.classList.remove("show");
+        render();
+      }
+
+      function runSequence() {
+        resetState();
+        ["U", "F", "R", "F", "D", "B"].forEach(function(move, index) {
+          window.setTimeout(function() {
+            receiveMove(move, { source: "sequence" });
+          }, 420 * (index + 1));
+        });
+      }
+
+      function exportJson() {
+        var json = JSON.stringify(state.events, null, 2);
+        if (!state.events.length) {
+          json = "[]";
+        }
+        function showFallback(message) {
+          els.exportPanel.textContent = message ? message + "\n\n" + json : json;
+          els.exportPanel.classList.add("show");
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(json).then(function() {
+            showFallback("Copied workflow event JSON to clipboard.");
+          }).catch(function() {
+            showFallback("Clipboard copy was blocked. JSON is shown below.");
+          });
+        } else {
+          showFallback("Clipboard API is unavailable. JSON is shown below.");
+        }
+        return json;
+      }
+
+      function getEvents() {
+        return state.events.slice();
+      }
+
+      function getState() {
+        var step = state.currentIndex >= 0 ? timeline[state.currentIndex] : null;
+        return {
+          currentMove: state.currentMove,
+          activeFace: state.currentFace,
+          stage: step ? step.stage : "READY",
+          command: step ? step.command : "WAIT_FOR_MOVE",
+          output: step ? step.output : "Empty work area",
+          currentStep: state.currentIndex,
+          events: getEvents()
+        };
+      }
+
+      function sendDeveloperMove() {
+        receiveMove(els.devMove.value);
+        els.devMove.value = normalizeMove(els.devMove.value);
+        els.devMove.focus();
+      }
+
+      function exposeApi() {
+        window.RubikFlowAgent = {
+          receiveMove: receiveMove,
+          runSequence: runSequence,
+          reset: resetState,
+          getEvents: getEvents,
+          exportEvents: exportJson,
+          getState: getState
+        };
+      }
+
+      function init() {
+        initElements();
+        buildTimeline();
+        render();
+        exposeApi();
+        document.addEventListener("keydown", handleKeydown, true);
+        window.addEventListener("keydown", handleKeydown, true);
+        els.runSequence.addEventListener("click", runSequence);
+        els.reset.addEventListener("click", resetState);
+        els.export.addEventListener("click", exportJson);
+        els.devSend.addEventListener("click", sendDeveloperMove);
+        els.devMove.addEventListener("keydown", function(event) {
+          if (event.key == "Enter") {
+            event.preventDefault();
+            sendDeveloperMove();
+          }
+        });
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
