@@ -688,7 +688,7 @@
 
     .rf-controls {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
     }
 
@@ -921,6 +921,7 @@
       <button id="rfRunSequence" class="rf-button" type="button">Run U F R F D B</button>
       <button id="rfReset" class="rf-button" type="button">Reset</button>
       <button id="rfExport" class="rf-button" type="button">Export JSON</button>
+      <button id="rfExportCsv" class="rf-button" type="button">Export CSV</button>
     </div>
 
     <div id="rfLog" class="rf-log" aria-label="RubikFlow Event Log"></div>
@@ -961,6 +962,8 @@
         B: { face: "BACK", label: "BACK / Back face" }
       };
 
+      var csvHeader = ["index", "timestamp", "move", "face", "workflowStage", "triggeredTile", "agentCommand", "result", "outputState", "source"];
+
       var state = {
         currentIndex: -1,
         currentMove: "No move",
@@ -986,6 +989,7 @@
         els.runSequence = document.getElementById("rfRunSequence");
         els.reset = document.getElementById("rfReset");
         els.export = document.getElementById("rfExport");
+        els.exportCsv = document.getElementById("rfExportCsv");
         els.devMove = document.getElementById("rfDevMove");
         els.devSend = document.getElementById("rfDevSend");
       }
@@ -1062,17 +1066,18 @@
 
       function createEvent(move, step, source) {
         var faceInfo = faceMap[move] || { face: "UNKNOWN", label: "Unknown face" };
-        var event = {
-          step: state.events.length + 1,
+        return {
+          index: state.events.length + 1,
+          timestamp: new Date().toISOString(),
           move: move,
           face: faceInfo.face,
-          stage: step.stage,
-          command: step.command,
-          output: step.output,
-          timestamp: Date.now(),
+          workflowStage: step.stage,
+          triggeredTile: step.label,
+          agentCommand: step.command,
+          result: step.result,
+          outputState: step.output,
           source: source
         };
-        return event;
       }
 
       function logEvent(event) {
@@ -1080,20 +1085,20 @@
           adapter: "cstimer-rubikflow-overlay",
           source: event.source,
           event: "workflow.move",
-          step: event.step,
+          index: event.index,
           rawMove: event.move,
           normalizedMove: event.move,
           face: event.face,
           activeFace: state.currentFace,
           sequence: state.history.slice(),
-          workflowStage: event.stage,
-          agentCommand: event.command,
-          output: event.output,
+          workflowStage: event.workflowStage,
+          agentCommand: event.agentCommand,
+          output: event.outputState,
           timestamp: event.timestamp
         };
         state.events.push(event);
         var div = document.createElement("div");
-        div.textContent = "[" + String(event.step).padStart(2, "0") + "] " + event.move + " -> " + event.command + " (" + event.source + ")";
+        div.textContent = "[" + String(event.index).padStart(2, "0") + "] " + event.move + " -> " + event.agentCommand + " (" + event.source + ")";
         div.title = JSON.stringify(payload);
         els.log.appendChild(div);
         els.log.scrollTop = els.log.scrollHeight;
@@ -1145,21 +1150,40 @@
         receiveMove(key, { source: "keyboard" });
       }
 
-      function resetState() {
+      function createControlEvent(move, workflowStage, triggeredTile, agentCommand, result, outputState, source) {
+        return {
+          index: state.events.length + 1,
+          timestamp: new Date().toISOString(),
+          move: move,
+          face: "NONE",
+          workflowStage: workflowStage,
+          triggeredTile: triggeredTile,
+          agentCommand: agentCommand,
+          result: result,
+          outputState: outputState,
+          source: source
+        };
+      }
+
+      function resetState(options) {
+        var settings = options || {};
         state.currentIndex = -1;
         state.currentMove = "No move";
         state.currentFace = "No active face";
         state.fCount = 0;
         state.history = [];
-        state.events = [];
-        els.log.innerHTML = "";
         els.exportPanel.textContent = "";
         els.exportPanel.classList.remove("show");
         render();
+        // Reset keeps the historical event list and appends RESET so JSON/CSV exports preserve the workflow audit trail.
+        if (!settings.silent) {
+          logEvent(createControlEvent("RESET", "RESET", "RESET", "RESET_WORKFLOW", "RESET", "READY", "reset"));
+        }
       }
 
       function runSequence() {
-        resetState();
+        resetState({ silent: true });
+        logEvent(createControlEvent("UFRFDB", "RUN_SEQUENCE", "Workflow", "RUN_SEQUENCE", "STARTED", "U F R F D B", "run-sequence"));
         ["U", "F", "R", "F", "D", "B"].forEach(function(move, index) {
           window.setTimeout(function() {
             receiveMove(move, { source: "sequence" });
@@ -1167,42 +1191,99 @@
         });
       }
 
-      function exportJson() {
-        var json = JSON.stringify(state.events, null, 2);
-        if (!state.events.length) {
-          json = "[]";
-        }
-        function showFallback(message) {
-          els.exportPanel.textContent = message ? message + "\n\n" + json : json;
-          els.exportPanel.classList.add("show");
-        }
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(json).then(function() {
-            showFallback("Copied workflow event JSON to clipboard.");
-          }).catch(function() {
-            showFallback("Clipboard copy was blocked. JSON is shown below.");
-          });
-        } else {
-          showFallback("Clipboard API is unavailable. JSON is shown below.");
-        }
-        return json;
+      function cloneEvent(event) {
+        return {
+          index: event.index,
+          timestamp: event.timestamp,
+          move: event.move,
+          face: event.face,
+          workflowStage: event.workflowStage,
+          triggeredTile: event.triggeredTile,
+          agentCommand: event.agentCommand,
+          result: event.result,
+          outputState: event.outputState,
+          source: event.source
+        };
       }
 
       function getEvents() {
-        return state.events.slice();
+        return state.events.map(cloneEvent);
       }
 
       function getState() {
         var step = state.currentIndex >= 0 ? timeline[state.currentIndex] : null;
         return {
+          project: "我的世界agent",
           currentMove: state.currentMove,
           activeFace: state.currentFace,
-          stage: step ? step.stage : "READY",
-          command: step ? step.command : "WAIT_FOR_MOVE",
-          output: step ? step.output : "Empty work area",
+          workflowStage: step ? step.stage : "READY",
+          triggeredTile: step ? step.label : "NONE",
+          agentCommand: step ? step.command : "WAIT_FOR_MOVE",
+          result: step ? step.result : "Empty work area. Press U, F, R, D, or B to drive the workflow.",
+          outputState: step ? step.output : "Empty work area",
           currentStep: state.currentIndex,
+          eventCount: state.events.length
+        };
+      }
+
+      function createExportPayload() {
+        return {
+          project: "我的世界agent",
+          type: "rubikflow-workflow-events",
+          version: "0.1.0",
+          generatedAt: new Date().toISOString(),
+          currentState: getState(),
           events: getEvents()
         };
+      }
+
+      function exportJSON() {
+        return JSON.stringify(createExportPayload(), null, 2);
+      }
+
+      function escapeCSV(value) {
+        var text = String(value == null ? "" : value);
+        return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+      }
+
+      function exportCSV() {
+        var rows = [csvHeader.join(",")];
+        getEvents().forEach(function(event) {
+          rows.push(csvHeader.map(function(field) {
+            return escapeCSV(event[field]);
+          }).join(","));
+        });
+        return rows.join("\n");
+      }
+
+      function downloadText(filename, text, type) {
+        var blob = new Blob([text], { type: type });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(function() {
+          URL.revokeObjectURL(url);
+        }, 0);
+      }
+
+      function downloadJSON() {
+        var json = exportJSON();
+        els.exportPanel.textContent = json;
+        els.exportPanel.classList.add("show");
+        downloadText("rubikflow-events.json", json, "application/json;charset=utf-8");
+        return json;
+      }
+
+      function downloadCSV() {
+        var csv = exportCSV();
+        els.exportPanel.textContent = csv;
+        els.exportPanel.classList.add("show");
+        downloadText("rubikflow-events.csv", csv, "text/csv;charset=utf-8");
+        return csv;
       }
 
       function sendDeveloperMove() {
@@ -1217,8 +1298,12 @@
           runSequence: runSequence,
           reset: resetState,
           getEvents: getEvents,
-          exportEvents: exportJson,
-          getState: getState
+          getState: getState,
+          exportJSON: exportJSON,
+          exportCSV: exportCSV,
+          downloadJSON: downloadJSON,
+          downloadCSV: downloadCSV,
+          exportEvents: exportJSON
         };
       }
 
@@ -1231,7 +1316,8 @@
         window.addEventListener("keydown", handleKeydown, true);
         els.runSequence.addEventListener("click", runSequence);
         els.reset.addEventListener("click", resetState);
-        els.export.addEventListener("click", exportJson);
+        els.export.addEventListener("click", downloadJSON);
+        els.exportCsv.addEventListener("click", downloadCSV);
         els.devSend.addEventListener("click", sendDeveloperMove);
         els.devMove.addEventListener("keydown", function(event) {
           if (event.key == "Enter") {

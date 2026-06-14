@@ -166,6 +166,12 @@
       min-height: 0;
     }
 
+    .header-actions {
+      display: grid;
+      gap: 8px;
+      justify-items: end;
+    }
+
     .state-switch {
       display: flex;
       gap: 8px;
@@ -188,6 +194,32 @@
       box-shadow: 0 8px 18px rgba(63, 48, 27, 0.08);
       position: relative;
       z-index: var(--z-text);
+    }
+
+    .export-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(118px, 1fr));
+      gap: 8px;
+      position: relative;
+      z-index: var(--z-overlay);
+    }
+
+    .action-btn {
+      appearance: none;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fffdf8;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 850;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(63, 48, 27, 0.07);
+    }
+
+    .action-btn:hover {
+      border-color: var(--active);
+      background: var(--active-soft);
     }
 
     .switch-btn.active {
@@ -924,6 +956,7 @@
       font-size: 18px;
       font-weight: 950;
       z-index: var(--z-content);
+      cursor: pointer;
     }
 
     .time-node.done {
@@ -1048,10 +1081,18 @@
             <h1>RubikFlow Agent</h1>
             <p class="sub">cube move -> workflow tile -> agent output</p>
           </div>
-          <div class="state-switch" aria-label="Keyframe state switch">
-            <button class="switch-btn active" data-state-btn="logic">LOGIC</button>
-            <button class="switch-btn" data-state-btn="clay">CLAY</button>
-            <button class="switch-btn" data-state-btn="lock">LOCK</button>
+          <div class="header-actions">
+            <div class="state-switch" aria-label="Keyframe state switch">
+              <button class="switch-btn active" data-state-btn="logic">LOGIC</button>
+              <button class="switch-btn" data-state-btn="clay">CLAY</button>
+              <button class="switch-btn" data-state-btn="lock">LOCK</button>
+            </div>
+            <div class="export-controls" aria-label="Workflow export controls">
+              <button id="runSequenceBtn" class="action-btn" type="button">Run Sequence</button>
+              <button id="resetBtn" class="action-btn" type="button">Reset</button>
+              <button id="exportJsonBtn" class="action-btn" type="button">Export JSON</button>
+              <button id="exportCsvBtn" class="action-btn" type="button">Export CSV</button>
+            </div>
           </div>
         </header>
 
@@ -1159,6 +1200,44 @@
     const moves = ["U", "F", "R", "F", "D", "B"];
 
     const states = {
+      select: {
+        moveIndex: 0,
+        move: "U",
+        face: "UP",
+        faceTitle: "U FACE",
+        faceHint: "Upper Face Active",
+        tile: "AGENT",
+        command: "SELECT MODULE",
+        output: "MODULE SELECTED",
+        result: "SELECTED",
+        score: "1200",
+        combo: "x1",
+        printability: "DRAFT",
+        mode: "SELECT",
+        progress: "16%",
+        progressValue: "16%",
+        stage: "SELECT",
+        visualState: "logic"
+      },
+      block: {
+        moveIndex: 1,
+        move: "F",
+        face: "FRONT",
+        faceTitle: "F FACE",
+        faceHint: "Front Face Active",
+        tile: "BLOCK",
+        command: "GENERATE BLOCK",
+        output: "BASE BLOCK",
+        result: "GENERATED",
+        score: "2400",
+        combo: "x2",
+        printability: "DRAFT",
+        mode: "BLOCK",
+        progress: "32%",
+        progressValue: "32%",
+        stage: "BLOCK",
+        visualState: "logic"
+      },
       logic: {
         moveIndex: 2,
         move: "R",
@@ -1212,8 +1291,39 @@
         progress: "84%",
         progressValue: "84%",
         stage: "LOCK"
+      },
+      print: {
+        moveIndex: 5,
+        move: "B",
+        face: "BACK",
+        faceTitle: "B FACE",
+        faceHint: "Back Face Active",
+        tile: "PRINT",
+        command: "PREPARE PRINT",
+        output: "PRINT READY",
+        result: "READY",
+        score: "7600",
+        combo: "x6",
+        printability: "READY",
+        mode: "PRINT",
+        progress: "100%",
+        progressValue: "100%",
+        stage: "PRINT",
+        visualState: "lock"
       }
     };
+
+    const workflowByMove = {
+      U: "select",
+      R: "logic",
+      D: "lock",
+      B: "print"
+    };
+
+    const csvHeader = ["index", "timestamp", "move", "face", "workflowStage", "triggeredTile", "agentCommand", "result", "outputState", "source"];
+    const events = [];
+    let currentStateName = "logic";
+    let fCount = 0;
 
     const tileGrid = document.getElementById("tileGrid");
     const pipelineGrid = document.getElementById("pipelineGrid");
@@ -1244,6 +1354,10 @@
       node.className = "time-node";
       node.dataset.timeline = label;
       node.innerHTML = `<span class="time-icon" style="--node-color:${colorMap[colorKey]}">${label[0]}</span><span>${label}</span>`;
+      node.addEventListener("click", () => {
+        const stateName = label.toLowerCase();
+        applyWorkflowState(stateName, "workflow-button");
+      });
       timelineNodes.appendChild(node);
     });
 
@@ -1273,9 +1387,121 @@
       shell.appendChild(piece);
     });
 
-    function setState(name) {
+    function cloneEvent(event) {
+      return {
+        index: event.index,
+        timestamp: event.timestamp,
+        move: event.move,
+        face: event.face,
+        workflowStage: event.workflowStage,
+        triggeredTile: event.triggeredTile,
+        agentCommand: event.agentCommand,
+        result: event.result,
+        outputState: event.outputState,
+        source: event.source
+      };
+    }
+
+    function createWorkflowEvent(data, source) {
+      return {
+        index: events.length + 1,
+        timestamp: new Date().toISOString(),
+        move: data.move,
+        face: data.face,
+        workflowStage: data.stage,
+        triggeredTile: data.tile,
+        agentCommand: data.command,
+        result: data.result,
+        outputState: data.output,
+        source: source || "ui"
+      };
+    }
+
+    function recordEvent(data, source) {
+      const event = createWorkflowEvent(data, source);
+      events.push(event);
+      return event;
+    }
+
+    function getCurrentStep() {
+      return states[currentStateName];
+    }
+
+    function getState() {
+      const data = getCurrentStep();
+      return {
+        project: "我的世界agent",
+        currentState: currentStateName,
+        move: data.move,
+        face: data.face,
+        workflowStage: data.stage,
+        triggeredTile: data.tile,
+        agentCommand: data.command,
+        result: data.result,
+        outputState: data.output,
+        eventCount: events.length
+      };
+    }
+
+    function getEvents() {
+      return events.map(cloneEvent);
+    }
+
+    function createExportPayload() {
+      return {
+        project: "我的世界agent",
+        type: "rubikflow-workflow-events",
+        version: "0.1.0",
+        generatedAt: new Date().toISOString(),
+        currentState: getState(),
+        events: getEvents()
+      };
+    }
+
+    function exportJSON() {
+      return JSON.stringify(createExportPayload(), null, 2);
+    }
+
+    function escapeCSV(value) {
+      const text = String(value == null ? "" : value);
+      return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    }
+
+    function exportCSV() {
+      const rows = [csvHeader.join(",")];
+      getEvents().forEach((event) => {
+        rows.push(csvHeader.map((field) => escapeCSV(event[field])).join(","));
+      });
+      return rows.join("\n");
+    }
+
+    function downloadText(filename, text, type) {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
+
+    function downloadJSON() {
+      downloadText("rubikflow-events.json", exportJSON(), "application/json;charset=utf-8");
+    }
+
+    function downloadCSV() {
+      downloadText("rubikflow-events.csv", exportCSV(), "text/csv;charset=utf-8");
+    }
+
+    function setState(name, source) {
       const data = states[name];
-      document.body.dataset.state = name;
+      if (!data) {
+        return null;
+      }
+      currentStateName = name;
+      document.body.dataset.state = data.visualState || name;
 
       document.querySelectorAll(".switch-btn").forEach((button) => {
         button.classList.toggle("active", button.dataset.stateBtn === name);
@@ -1340,13 +1566,111 @@
           chip.appendChild(check);
         }
       });
+
+      if (source) {
+        recordEvent(data, source);
+      }
+
+      return data;
+    }
+
+    function resolveMove(move) {
+      const normalized = String(move || "").trim().toUpperCase().charAt(0);
+      if (normalized === "F") {
+        fCount += 1;
+        return fCount >= 2 || currentStateName === "logic" || currentStateName === "clay" || currentStateName === "lock" ? "clay" : "block";
+      }
+      return workflowByMove[normalized] || null;
+    }
+
+    function applyWorkflowState(name, source) {
+      if (name === "block") {
+        fCount = Math.max(fCount, 1);
+      } else if (name === "clay") {
+        fCount = 2;
+      }
+      return setState(name, source);
+    }
+
+    function receiveMove(move, options) {
+      const stateName = resolveMove(move);
+      const settings = options || {};
+      if (!stateName) {
+        return null;
+      }
+      return applyWorkflowState(stateName, settings.source || "external");
+    }
+
+    function handleKeydown(event) {
+      const target = event.target;
+      if (target && /^(input|textarea|select|button)$/i.test(target.tagName || "")) {
+        return;
+      }
+      const key = String(event.key || "").toUpperCase();
+      if (!/^[UFRDB]$/.test(key)) {
+        return;
+      }
+      event.preventDefault();
+      receiveMove(key, { source: "keyboard" });
+    }
+
+    function runSequence() {
+      recordEvent({
+        move: "UFRFDB",
+        face: "SEQUENCE",
+        stage: "RUN_SEQUENCE",
+        tile: "Workflow",
+        command: "RUN_SEQUENCE",
+        result: "STARTED",
+        output: "U F R F D B"
+      }, "run-sequence");
+      fCount = 0;
+      ["U", "F", "R", "F", "D", "B"].forEach((move, index) => {
+        window.setTimeout(() => receiveMove(move, { source: "sequence" }), 360 * (index + 1));
+      });
+    }
+
+    function resetWorkflow() {
+      fCount = 0;
+      setState("logic");
+      // Reset keeps the historical event list and writes a RESET event so exported files preserve the audit trail.
+      recordEvent({
+        move: "RESET",
+        face: "NONE",
+        stage: "RESET",
+        tile: "RESET",
+        command: "RESET_WORKFLOW",
+        result: "RESET",
+        output: "READY"
+      }, "reset");
+    }
+
+    function exposeApi() {
+      window.RubikFlowAgent = {
+        receiveMove,
+        runSequence,
+        reset: resetWorkflow,
+        getState,
+        getEvents,
+        exportJSON,
+        exportCSV,
+        downloadJSON,
+        downloadCSV
+      };
     }
 
     document.querySelectorAll("[data-state-btn]").forEach((button) => {
-      button.addEventListener("click", () => setState(button.dataset.stateBtn));
+      button.addEventListener("click", () => applyWorkflowState(button.dataset.stateBtn, "state-switch"));
     });
 
+    document.getElementById("runSequenceBtn").addEventListener("click", runSequence);
+    document.getElementById("resetBtn").addEventListener("click", resetWorkflow);
+    document.getElementById("exportJsonBtn").addEventListener("click", downloadJSON);
+    document.getElementById("exportCsvBtn").addEventListener("click", downloadCSV);
+    document.addEventListener("keydown", handleKeydown, true);
+
     setState("logic");
+    exposeApi();
   </script>
 </body>
 </html>
