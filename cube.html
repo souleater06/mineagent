@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>✦ RHYTHM·CUBE · 移动版 ✦</title>
+    <title>✦ RHYTHM·CUBE · 双倍脉冲 ✦</title>
     <style>
         * {
             margin: 0;
@@ -255,11 +255,13 @@
             font-weight: bold;
             color: #c8e8ff;
             text-shadow: 0 0 12px rgba(100, 200, 255, 0.08);
-            pointer-events: none;
+            pointer-events: auto;
             will-change: transform, left;
             font-family: 'VT323', monospace;
             transition: background 0.2s, border-color 0.2s, transform 0.12s;
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.20);
+            cursor: pointer;
+            touch-action: manipulation;
         }
         .note-h.in-judge {
             border-color: rgba(100, 200, 255, 0.40);
@@ -419,6 +421,15 @@
             color: #ff8888;
             background: rgba(255, 100, 100, 0.05);
         }
+        #bottom-controls button.toggle {
+            border-color: rgba(100, 200, 255, 0.15);
+            color: #88ddff88;
+        }
+        #bottom-controls button.toggle.active {
+            border-color: rgba(100, 200, 255, 0.60);
+            color: #88ddff;
+            background: rgba(100, 200, 255, 0.10);
+        }
 
         /* 右侧卡牌槽（可拖拽） */
         #card-slot {
@@ -458,33 +469,7 @@
         .slot-card .name { color: #88ddff; letter-spacing: 1px; font-size: 11px; }
         .slot-card .effect { display: none; }
 
-        /* 隐藏导出 */
-        #secret-export {
-            position: absolute;
-            bottom: 80px;
-            right: 160px;
-            pointer-events: auto;
-            z-index: 45;
-            opacity: 0.20;
-            transition: opacity 0.30s;
-            font-size: 11px;
-            font-family: 'VT323', monospace;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 30px;
-            color: #88ddff;
-            padding: 2px 12px;
-            cursor: pointer;
-            letter-spacing: 1px;
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-        }
-        #secret-export:hover {
-            opacity: 0.60;
-            border-color: rgba(255, 255, 255, 0.15);
-        }
-
-        /* ===== 移动端专门适配 ===== */
+        /* 适配小屏 */
         @media (max-width: 480px) {
             #top-bar {
                 padding: 2px 8px;
@@ -519,7 +504,6 @@
             .slot-card { padding: 2px 8px 2px 4px; font-size: 10px; }
             .slot-card .icon { font-size: 12px; }
             .slot-card .name { font-size: 9px; }
-            #secret-export { right: 100px; bottom: 60px; font-size: 9px; padding: 1px 8px; }
         }
     </style>
 </head>
@@ -571,9 +555,6 @@
             <!-- 右侧卡牌槽（可拖拽） -->
             <div id="card-slot"></div>
 
-            <!-- 隐藏导出 -->
-            <button id="secret-export" title="导出数据 (JSON/CSV)">⏣ 导出</button>
-
             <!-- 底部控制 -->
             <div id="bottom-controls">
                 <button id="startBtn" class="primary">▶ 开始</button>
@@ -581,6 +562,7 @@
                 <button id="resetBtn" class="danger">↺ 重置</button>
                 <button id="scrambleBtn">🎲 打乱</button>
                 <button id="cardTestBtn">🃏 抽卡</button>
+                <button id="toggleRotateBtn" class="toggle active">🔄 自转</button>
             </div>
         </div>
     </div>
@@ -598,7 +580,7 @@
 
 <script type="module">
 // ================================================================
-//  0. ASCII 代码雨背景 (同前)
+//  0. ASCII 代码雨背景
 // ================================================================
 const bgCanvas = document.getElementById('ascii-bg');
 const ctx = bgCanvas.getContext('2d');
@@ -710,7 +692,7 @@ window.addEventListener('resize', () => {
 });
 
 // ================================================================
-//  1. Three.js 魔方 — 圆形色块 (同前)
+//  1. Three.js 魔方 — 圆形色块
 // ================================================================
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -729,14 +711,47 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setClearColor(0x000000, 0);
 container.appendChild(renderer.domElement);
 
+// 视角控制
 const orbitControls = new OrbitControls(camera, renderer.domElement);
 orbitControls.enableDamping = true;
 orbitControls.dampingFactor = 0.06;
 orbitControls.rotateSpeed = 0.6;
-orbitControls.autoRotate = false;
+orbitControls.autoRotate = true;
+orbitControls.autoRotateSpeed = 1.2;
+orbitControls.enableRotate = true;
 orbitControls.target.set(0, 0, 0);
 
-// 灯光
+// 按钮切换自动旋转
+const toggleRotateBtn = document.getElementById('toggleRotateBtn');
+toggleRotateBtn.addEventListener('click', () => {
+    orbitControls.autoRotate = !orbitControls.autoRotate;
+    toggleRotateBtn.classList.toggle('active');
+    toggleRotateBtn.textContent = orbitControls.autoRotate ? '🔄 自转' : '⏸ 自转';
+});
+
+// ---- 双指双击重置手势 ----
+let lastTouchEnd = 0;
+document.addEventListener('touchend', (e) => {
+    if (e.changedTouches.length === 2) {
+        const now = Date.now();
+        if (now - lastTouchEnd < 300) {
+            resetGame();
+            queue.length = 0;
+            slotStates.fill(null);
+            renderSlots();
+            recalcCardEffects();
+            loadFormula('U F R F D B');
+            updateHUD();
+            game.statusDisplay.textContent = '↺ 已还原';
+            if (navigator.vibrate) navigator.vibrate(20);
+        }
+        lastTouchEnd = now;
+    }
+});
+
+// ================================================================
+//  灯光、魔方、粒子、旋转逻辑
+// ================================================================
 const ambient = new THREE.AmbientLight(0x446688, 0.6);
 scene.add(ambient);
 const dirLight = new THREE.DirectionalLight(0x88ddff, 0.9);
@@ -749,7 +764,6 @@ const backLight = new THREE.DirectionalLight(0x4488aa, 0.4);
 backLight.position.set(-3, -2, -6);
 scene.add(backLight);
 
-// ---- 生成圆形纹理 ----
 function createCircleTexture(color, size = 128) {
     const canvas = document.createElement('canvas');
     canvas.width = size;
@@ -777,7 +791,6 @@ function createCircleTexture(color, size = 128) {
     return texture;
 }
 
-// ---- 创建魔方 ----
 const cubeSize = 0.88;
 const gap = 0.07;
 const spacing = cubeSize + gap;
@@ -830,7 +843,6 @@ function buildCube() {
 }
 buildCube();
 
-// ---- 粒子环绕 ----
 const particleCount = 600;
 const particleGeo = new THREE.BufferGeometry();
 const particlePos = new Float32Array(particleCount * 3);
@@ -974,9 +986,11 @@ function rotateFace(face, dir = 1) {
     }
 }
 
-// ---- 暴击脉冲 ----
+// ---- 暴击脉冲（接受强度参数，默认1.0） ----
 let critPulse = 0;
-function pulseArt() { critPulse = 1.0; }
+function pulseArt(intensity = 1.0) {
+    critPulse = Math.max(critPulse, intensity);
+}
 
 // ---- 3D 动画 ----
 let time = 0;
@@ -996,14 +1010,15 @@ function animateScene() {
     }
     particleSystem.geometry.attributes.position.needsUpdate = true;
 
+    // 脉冲响应（强度由 critPulse 控制，1.0 普通，2.0 双倍）
     if (critPulse > 0.01) {
-        const scale = 1 + critPulse * 0.06;
-        cubes.forEach(cube => cube.scale.set(scale, scale, scale));
-        particleMat.size = 0.06 + critPulse * 0.08;
-        particleMat.opacity = 0.9;
+        const scaleFactor = 1 + critPulse * 0.06; // 1.06 或 1.12
+        cubes.forEach(cube => cube.scale.set(scaleFactor, scaleFactor, scaleFactor));
+        particleMat.size = 0.05 + critPulse * 0.04;
+        particleMat.opacity = 0.7 + critPulse * 0.1;
         const colors = particleSystem.geometry.attributes.color.array;
         for (let i = 0; i < particleCount; i++) {
-            const c = new THREE.Color().setHSL(0.55 + critPulse * 0.2, 0.9, 0.6 + critPulse * 0.3);
+            const c = new THREE.Color().setHSL(0.55 + critPulse * 0.15, 0.9, 0.6 + critPulse * 0.15);
             colors[i*3] = c.r;
             colors[i*3+1] = c.g;
             colors[i*3+2] = c.b;
@@ -1110,15 +1125,13 @@ function updateCardSlot() {
     collectedCards.forEach((c, index) => {
         const div = document.createElement('div');
         div.className = 'slot-card';
-        div.draggable = false; // 禁用 HTML5 拖拽，使用触屏
+        div.draggable = false;
         div.dataset.cardIndex = index;
         div.dataset.cardId = c.id;
         div.innerHTML = `<span class="icon">${c.icon}</span><span class="name">${c.name}</span>`;
-        // 触屏拖拽事件
         div.addEventListener('touchstart', handleTouchStart, { passive: false });
         div.addEventListener('touchmove', handleTouchMove, { passive: false });
         div.addEventListener('touchend', handleTouchEnd, { passive: false });
-        // 鼠标拖拽（桌面）
         div.addEventListener('mousedown', handleMouseDown);
         slot.appendChild(div);
     });
@@ -1147,7 +1160,6 @@ function createGhost(cardId, icon, name) {
     return el;
 }
 
-// ---- 触屏拖拽 ----
 let touchId = null;
 function handleTouchStart(e) {
     const touch = e.touches[0];
@@ -1175,7 +1187,6 @@ function handleTouchMove(e) {
     if (!touch) return;
     ghostElement.style.left = (touch.clientX - dragData.offsetX) + 'px';
     ghostElement.style.top = (touch.clientY - dragData.offsetY) + 'px';
-    // 检测是否在插槽区域
     const slots = document.querySelectorAll('.slot-place');
     slots.forEach(slot => {
         const rect = slot.getBoundingClientRect();
@@ -1189,7 +1200,6 @@ function handleTouchMove(e) {
 
 function handleTouchEnd(e) {
     if (!dragData || !ghostElement) return;
-    // 检测是否放在插槽上
     const touch = e.changedTouches[0];
     const slots = document.querySelectorAll('.slot-place');
     let targetSlot = null;
@@ -1205,7 +1215,6 @@ function handleTouchEnd(e) {
     if (targetSlot) {
         const idx = parseInt(targetSlot.dataset.slotIndex);
         const cardId = dragData.cardId;
-        // 检查是否已存在
         if (slotStates.some(s => s === cardId)) {
             showCardPopup('⚠️ 重复', '该卡牌已放置', '');
         } else if (slotStates[idx]) {
@@ -1213,7 +1222,6 @@ function handleTouchEnd(e) {
         } else {
             const cardObj = CARD_POOL.find(c => c.id === cardId);
             if (cardObj) {
-                // 从收集列表中移除
                 const collectedIdx = collectedCards.findIndex(c => c.id === cardId);
                 if (collectedIdx !== -1) {
                     collectedCards.splice(collectedIdx, 1);
@@ -1226,7 +1234,6 @@ function handleTouchEnd(e) {
             }
         }
     }
-    // 清理
     if (ghostElement.parentNode) ghostElement.parentNode.removeChild(ghostElement);
     ghostElement = null;
     dragData = null;
@@ -1234,7 +1241,6 @@ function handleTouchEnd(e) {
     e.preventDefault();
 }
 
-// ---- 鼠标拖拽（桌面） ----
 function handleMouseDown(e) {
     const cardEl = e.currentTarget;
     const cardId = cardEl.dataset.cardId;
@@ -1364,7 +1370,9 @@ function recalcCardEffects() {
     updateHUD();
 }
 
-// ---- 横向音游引擎 ----
+// ================================================================
+//  3. 横向音游引擎 + 音符点击支持 + 双倍脉冲判定
+// ================================================================
 const game = {
     notes: [],
     speed: 1.0,
@@ -1401,6 +1409,55 @@ function updateHUD() {
     game.cardCountDisplay.textContent = collectedCards.length;
 }
 
+// ---- 处理音符点击（根据是否在判定区决定脉冲强度） ----
+function processNoteClick(note) {
+    if (note.judged) return;
+    const char = note.char;
+    note.judged = true;
+    note.element.classList.remove('in-judge');
+    note.element.classList.add('crit');
+
+    // 计算分数
+    let points = 10 + Math.floor(game.combo / 4) * 2;
+    points += cardEffects.critBonus;
+    if (cardEffects.doubleCrit) points *= 2;
+    if (cardEffects.comboBonus > 0 && game.combo >= 5) points += cardEffects.comboBonus;
+    if (cardEffects.randomBonus > 0) points += Math.floor(Math.random() * cardEffects.randomBonus) + 1;
+    if (cardEffects.perCardBonus > 0) points += cardEffects.perCardBonus * collectedCards.length;
+
+    // 精确判定额外加分（可选）
+    if (note.active) points += 5;
+
+    game.score += points;
+    game.combo += 1;
+    if (game.combo > game.maxCombo) game.maxCombo = game.combo;
+    updateHUD();
+    showCritEffect();
+    game.statusDisplay.textContent = `⚡ CRIT! x${game.combo} +${points}`;
+
+    // ===== 关键：根据是否在判定区决定脉冲强度 =====
+    const pulseIntensity = note.active ? 2.0 : 1.0;
+    if (window.__pulseArt) window.__pulseArt(pulseIntensity);
+
+    // 旋转魔方
+    if (['U','D','R','L','F','B'].includes(char)) {
+        rotateFace(char, 1);
+    }
+
+    // 暴击抽卡
+    if (Math.random() < 0.08 && collectedCards.length < 5) {
+        setTimeout(() => drawCard(), 300);
+    }
+
+    // 延迟移除音符
+    setTimeout(() => {
+        if (note.element.parentNode) note.element.remove();
+    }, 400);
+    const idx = game.notes.indexOf(note);
+    if (idx !== -1) game.notes.splice(idx, 1);
+}
+
+// ---- 创建音符（绑定点击事件） ----
 function createNoteH(char) {
     const el = document.createElement('div');
     el.className = 'note-h';
@@ -1409,9 +1466,19 @@ function createNoteH(char) {
     el.style.left = (containerRect.width - 30) + 'px';
     el.style.top = (20 + Math.random() * 60) + '%';
     game.container.appendChild(el);
-    return el;
+
+    const noteObj = { char, element: el, x: parseFloat(el.style.left), active: false, judged: false };
+    el.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        if (!game.isRunning || game.isPaused) return;
+        if (noteObj.judged) return;
+        processNoteClick(noteObj);
+    });
+
+    return noteObj;
 }
 
+// ---- 生成音符 ----
 function spawnNoteH() {
     if (game.currentIndex >= game.formula.length) {
         game.statusDisplay.textContent = '✅ 完成!';
@@ -1419,11 +1486,12 @@ function spawnNoteH() {
         return;
     }
     const char = game.formula[game.currentIndex];
-    const el = createNoteH(char);
-    game.notes.push({ char, element: el, x: parseFloat(el.style.left), active: false, judged: false });
+    const note = createNoteH(char);
+    game.notes.push(note);
     game.currentIndex++;
 }
 
+// ---- 更新音符位置（仅移动和 miss 检查） ----
 function updateNotesH() {
     if (game.isPaused || !game.isRunning) return;
     const containerWidth = game.container.getBoundingClientRect().width;
@@ -1436,91 +1504,43 @@ function updateNotesH() {
         const inJudge = Math.abs(note.x - judgeX) < 25;
         note.active = inJudge;
         note.element.classList.toggle('in-judge', inJudge);
-        if (note.x < -60) {
-            if (!note.judged) {
-                game.combo = 0;
-                if (cardEffects.missBonus > 0) {
-                    game.score += cardEffects.missBonus;
-                    showCardPopup('🔥 余烬', `+${cardEffects.missBonus} 分`, '烈焰小丑触发');
-                }
-                game.statusDisplay.textContent = '❌ Miss';
-                note.element.classList.add('miss');
-                setTimeout(() => note.element.remove(), 300);
-                game.notes.splice(i, 1);
-                updateHUD();
-            } else {
-                note.element.remove();
-                game.notes.splice(i, 1);
+        if (note.x < -60 && !note.judged) {
+            note.judged = true;
+            game.combo = 0;
+            if (cardEffects.missBonus > 0) {
+                game.score += cardEffects.missBonus;
+                showCardPopup('🔥 余烬', `+${cardEffects.missBonus} 分`, '烈焰小丑触发');
             }
+            game.statusDisplay.textContent = '❌ Miss';
+            note.element.classList.add('miss');
+            setTimeout(() => note.element.remove(), 300);
+            game.notes.splice(i, 1);
+            updateHUD();
+        } else if (note.x < -60 && note.judged) {
+            note.element.remove();
+            game.notes.splice(i, 1);
         }
     }
     const hasActive = game.notes.some(n => n.active && !n.judged);
     game.judgeZone.classList.toggle('active', hasActive);
 }
 
+// ---- 按键处理（同样支持双倍脉冲） ----
 function handleKeyPressH(char) {
     if (!game.isRunning || game.isPaused) return false;
     for (let i = 0; i < game.notes.length; i++) {
         const note = game.notes[i];
-        if (note.active && !note.judged && note.char === char) {
-            note.judged = true;
-            note.element.classList.remove('in-judge');
-            note.element.classList.add('crit');
-
-            let points = 10 + Math.floor(game.combo / 4) * 2;
-            points += cardEffects.critBonus;
-            if (cardEffects.doubleCrit) points *= 2;
-            if (cardEffects.comboBonus > 0 && game.combo >= 5) points += cardEffects.comboBonus;
-            if (cardEffects.randomBonus > 0) points += Math.floor(Math.random() * cardEffects.randomBonus) + 1;
-            if (cardEffects.perCardBonus > 0) points += cardEffects.perCardBonus * collectedCards.length;
-
-            game.score += points;
-            game.combo += 1;
-            if (game.combo > game.maxCombo) game.maxCombo = game.combo;
-            updateHUD();
-            showCritEffect();
-            game.statusDisplay.textContent = `⚡ CRIT! x${game.combo} +${points}`;
-
-            if (window.__pulseArt) window.__pulseArt();
-            if (['U','D','R','L','F','B'].includes(char)) {
-                rotateFace(char, 1);
+        if (!note.judged && note.char === char) {
+            if (note.active || Math.abs(note.x - game.judgeX) < 60) {
+                processNoteClick(note);
+                return true;
             }
-
-            if (Math.random() < 0.08 && collectedCards.length < 5) {
-                setTimeout(() => drawCard(), 300);
-            }
-
-            setTimeout(() => { note.element.remove(); }, 400);
-            game.notes.splice(i, 1);
-            return true;
         }
     }
     return false;
 }
 
-function showCritEffect() {
-    const el = game.critEffect;
-    el.classList.remove('show');
-    void el.offsetWidth;
-    el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), 700);
-}
-
-function loadFormula(str) {
-    const cleaned = str.toUpperCase().replace(/\s+/g, ' ').trim();
-    const chars = cleaned.split(' ').filter(c => c.length === 1 && 'UDFRLB'.includes(c));
-    if (chars.length === 0) {
-        game.statusDisplay.textContent = '⚠️ 无效公式';
-        return false;
-    }
-    game.formula = chars;
-    game.currentIndex = 0;
-    game.notes.forEach(n => n.element.remove());
-    game.notes = [];
-    game.statusDisplay.textContent = `📝 ${chars.length} 步`;
-    return true;
-}
-
+// ---- 其他函数 ----
 function startGame() {
     if (game.formula.length === 0) {
         loadFormula('U F R F D B');
@@ -1559,6 +1579,29 @@ function resetGame() {
     game.statusDisplay.textContent = '⏸ 待命';
 }
 
+function loadFormula(str) {
+    const cleaned = str.toUpperCase().replace(/\s+/g, ' ').trim();
+    const chars = cleaned.split(' ').filter(c => c.length === 1 && 'UDFRLB'.includes(c));
+    if (chars.length === 0) {
+        game.statusDisplay.textContent = '⚠️ 无效公式';
+        return false;
+    }
+    game.formula = chars;
+    game.currentIndex = 0;
+    game.notes.forEach(n => n.element.remove());
+    game.notes = [];
+    game.statusDisplay.textContent = `📝 ${chars.length} 步`;
+    return true;
+}
+
+function showCritEffect() {
+    const el = game.critEffect;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 700);
+}
+
 function gameLoopH(now) {
     if (game.isRunning && !game.isPaused) {
         if (game.currentIndex < game.formula.length) {
@@ -1570,58 +1613,6 @@ function gameLoopH(now) {
         updateNotesH();
     }
     requestAnimationFrame(gameLoopH);
-}
-
-// ================================================================
-//  导出功能
-// ================================================================
-function getExportData() {
-    return {
-        timestamp: new Date().toISOString(),
-        score: game.score,
-        combo: game.combo,
-        maxCombo: game.maxCombo,
-        cards: collectedCards.map(c => ({ id: c.id, name: c.name, effect: c.effect })),
-        placedCards: slotStates.filter(id => id !== null),
-        formula: game.formula.join(' '),
-        stepsCompleted: game.currentIndex,
-        cardEffects: { ...cardEffects },
-    };
-}
-
-function exportJSON() {
-    const data = getExportData();
-    const json = JSON.stringify(data, null, 2);
-    downloadFile(json, 'rhythm-cube-data.json', 'application/json');
-}
-
-function exportCSV() {
-    const data = getExportData();
-    const headers = ['timestamp', 'score', 'combo', 'maxCombo', 'cards', 'placedCards', 'formula', 'stepsCompleted'];
-    const row = [
-        data.timestamp,
-        data.score,
-        data.combo,
-        data.maxCombo,
-        data.cards.map(c => c.name).join(';'),
-        data.placedCards.join(';'),
-        data.formula,
-        data.stepsCompleted,
-    ];
-    const csv = headers.join(',') + '\n' + row.map(v => `"${v}"`).join(',');
-    downloadFile(csv, 'rhythm-cube-data.csv', 'text/csv');
-}
-
-function downloadFile(content, filename, mime) {
-    const blob = new Blob([content], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
 }
 
 // ================================================================
@@ -1644,20 +1635,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const face = faces[Math.floor(Math.random() * faces.length)];
             setTimeout(() => {
                 rotateFace(face, 1);
-                if (window.__pulseArt) window.__pulseArt();
+                if (window.__pulseArt) window.__pulseArt(1.0);
             }, i * 120);
         }
     });
 
     document.getElementById('cardTestBtn').addEventListener('click', drawCard);
 
-    document.getElementById('secret-export').addEventListener('click', () => {
-        const choice = confirm('导出 JSON？\n点击「确定」导出 JSON\n点击「取消」导出 CSV');
-        if (choice) exportJSON();
-        else exportCSV();
-    });
-
-    // 键盘事件（桌面）
     document.addEventListener('keydown', (e) => {
         const key = e.key.toUpperCase();
         if (game.isRunning && !game.isPaused) {
@@ -1667,7 +1651,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (['U','F','R','D','B','L'].includes(key)) {
             e.preventDefault();
             rotateFace(key, 1);
-            if (window.__pulseArt) window.__pulseArt();
+            if (window.__pulseArt) window.__pulseArt(1.0);
         }
         if (key === ' ' || key === 'SPACE') {
             e.preventDefault();
@@ -1691,10 +1675,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 requestAnimationFrame(gameLoopH);
 
-console.log('✦ RHYTHM·CUBE · 移动优化版 ✦');
-console.log('   ⌨️  U F R D B L  → 旋转魔方 / 横向判定');
-console.log('   🃏  暴击抽卡，拖拽卡牌到音游轴插槽生效');
-console.log('   ⏣  右下角「导出」隐藏按钮');
+console.log('✦ RHYTHM·CUBE · 双倍脉冲版 ✦');
+console.log('   ⌨️  U F R D B L  → 旋转 / 判定');
+console.log('   🃏  暴击抽卡，拖拽卡牌到插槽');
+console.log('   🔄  点击「自转」开关自动旋转');
+console.log('   👆  点击音符，精确判定区内触发双倍脉冲');
 </script>
 </body>
 </html>
