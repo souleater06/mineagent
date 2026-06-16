@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>✦ RHYTHM·CUBE · 圆面魔方 + 横向音游 + 卡牌拖拽 ✦</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+        body {
+            background: #0a0e1a;
+            color: #e0e8f0;
+            font-family: 'VT323', 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            user-select: none;
+        }
+
+        #ascii-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            background: #0a0e1a;
+            opacity: 0.5;
+        }
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            z-index: 1;
+            pointer-events: none;
+        }
+        #app > * {
+            pointer-events: auto;
+        }
+
+        /* 毛玻璃顶部 */
+        #top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 24px;
+            margin: 12px 20px 0 20px;
+            border-radius: 40px;
+            flex-shrink: 0;
+            z-index: 50;
+            font-size: 16px;
+            letter-spacing: 1px;
+            color: #c8e8ff;
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 22px;
+            color: #88ddff;
+            text-shadow: 0 0 20px rgba(100, 200, 255, 0.15);
+        }
+        .logo span { color: #c8e8ff; font-size: 18px; letter-spacing: 2px; }
+        .logo .suit { font-size: 26px; color: #88ddff; }
+
+        .stats {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .stats .item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 14px 4px 10px;
+            border-radius: 40px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .stats .item .label {
+            color: rgba(180, 210, 230, 0.5);
+            font-size: 12px;
+            letter-spacing: 2px;
+        }
+        .stats .item .value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #88ddff;
+            text-shadow: 0 0 16px rgba(100, 200, 255, 0.10);
+            min-width: 28px;
+        }
+
+        /* 主体区域 */
+        #main-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: transparent;
+            margin: 12px 20px 12px 20px;
+            border-radius: 40px;
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+        }
+        #three-container {
+            width: 100%;
+            height: 100%;
+            display: block;
+            position: relative;
+            z-index: 2;
+            border-radius: 40px;
+            overflow: hidden;
+        }
+
+        #game-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        /* ---- 横向音游判定区（左侧） ---- */
+        #judge-zone {
+            position: absolute;
+            left: 15%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 70%;
+            background: rgba(0, 212, 255, 0.08);
+            border: 2px solid rgba(0, 212, 255, 0.20);
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.05);
+            pointer-events: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #judge-zone.active {
+            border-color: rgba(100, 200, 255, 0.60);
+            box-shadow: 0 0 50px rgba(100, 200, 255, 0.15);
+        }
+        #judge-zone .label {
+            writing-mode: vertical-rl;
+            letter-spacing: 8px;
+            color: rgba(180, 210, 230, 0.25);
+            font-size: 16px;
+        }
+
+        /* ---- 卡牌插槽区域（在音游轴上方） ---- */
+        #card-slot-area {
+            position: absolute;
+            left: 18%;
+            top: 8%;
+            right: 18%;
+            height: 60px;
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            pointer-events: auto;
+            z-index: 26;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 40px;
+            padding: 4px 12px;
+            backdrop-filter: blur(4px);
+            border: 1px dashed rgba(255, 255, 255, 0.06);
+        }
+        .slot-place {
+            width: 60px;
+            height: 50px;
+            border-radius: 30px;
+            border: 2px dashed rgba(255, 255, 255, 0.10);
+            background: rgba(255, 255, 255, 0.02);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease;
+            cursor: grab;
+            position: relative;
+        }
+        .slot-place.dropped {
+            border-color: rgba(100, 200, 255, 0.40);
+            background: rgba(100, 200, 255, 0.06);
+            border-style: solid;
+            color: #88ddff;
+            font-size: 16px;
+            cursor: default;
+        }
+        .slot-place.dropped .card-icon {
+            font-size: 24px;
+        }
+        .slot-place .card-name {
+            display: none;
+        }
+        .slot-place.dropped .card-name {
+            display: inline;
+            font-size: 12px;
+            margin-left: 4px;
+            color: #88ddff;
+        }
+        .slot-place.drag-over {
+            border-color: #88ddff;
+            background: rgba(100, 200, 255, 0.10);
+            transform: scale(1.05);
+        }
+
+        /* ---- 横向滚动字母容器 ---- */
+        #scroll-container-h {
+            position: absolute;
+            top: 18%;
+            left: 0;
+            width: 100%;
+            height: 64%;
+            pointer-events: none;
+            overflow: visible;
+        }
+        .note-h {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 60px;
+            height: 60px;
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            font-weight: bold;
+            color: #c8e8ff;
+            text-shadow: 0 0 16px rgba(100, 200, 255, 0.08);
+            pointer-events: none;
+            will-change: transform, left;
+            font-family: 'VT323', monospace;
+            transition: background 0.2s, border-color 0.2s, transform 0.12s;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.20);
+        }
+        .note-h.in-judge {
+            border-color: rgba(100, 200, 255, 0.40);
+            background: rgba(100, 200, 255, 0.06);
+            transform: translateY(-50%) scale(1.08);
+            box-shadow: 0 0 30px rgba(100, 200, 255, 0.06);
+        }
+        .note-h.miss {
+            border-color: rgba(255, 100, 100, 0.30);
+            background: rgba(255, 100, 100, 0.06);
+            transform: translateY(-50%) scale(0.85);
+        }
+        .note-h.crit {
+            border-color: rgba(100, 200, 255, 0.60);
+            background: rgba(100, 200, 255, 0.10);
+            transform: translateY(-50%) scale(1.35);
+            box-shadow: 0 0 50px rgba(100, 200, 255, 0.15);
+        }
+
+        /* 暴击特效 */
+        #crit-effect {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 72px;
+            font-weight: bold;
+            color: #88ddff;
+            text-shadow: 0 0 40px rgba(100, 200, 255, 0.50), 0 0 80px rgba(50, 150, 255, 0.20);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 30;
+            font-family: 'VT323', monospace;
+            letter-spacing: 6px;
+        }
+        #crit-effect.show {
+            opacity: 1;
+            animation: critPop 0.6s ease-out forwards;
+        }
+        @keyframes critPop {
+            0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.8); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -60%) scale(1); }
+        }
+
+        /* 卡牌弹出 */
+        #card-popup {
+            position: absolute;
+            right: 40px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 220px;
+            border-radius: 32px;
+            padding: 20px 24px;
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.35s ease, transform 0.35s ease;
+            transform: translateY(-50%) translateX(30px);
+            z-index: 35;
+            font-family: 'VT323', monospace;
+        }
+        #card-popup.show {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0);
+        }
+        #card-popup .card-title {
+            color: #88ddff;
+            font-size: 24px;
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+            text-shadow: 0 0 20px rgba(100, 200, 255, 0.10);
+        }
+        #card-popup .card-effect {
+            color: #88ddff;
+            font-size: 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding-top: 6px;
+            margin-top: 4px;
+        }
+        #card-popup .card-sub {
+            color: rgba(180, 210, 230, 0.40);
+            font-size: 14px;
+            margin-top: 4px;
+            letter-spacing: 1px;
+        }
+        #card-popup .card-suit {
+            position: absolute;
+            top: -10px;
+            right: 16px;
+            font-size: 28px;
+            color: rgba(180, 210, 230, 0.10);
+        }
+
+        /* 底部控制栏 */
+        #bottom-controls {
+            position: absolute;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            pointer-events: auto;
+            z-index: 40;
+            padding: 14px 24px;
+            border-radius: 60px;
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        #bottom-controls button {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 40px;
+            color: #c8e8ff;
+            padding: 8px 22px;
+            font-size: 16px;
+            font-family: 'VT323', monospace;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            letter-spacing: 2px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        #bottom-controls button:hover {
+            background: rgba(255, 255, 255, 0.10);
+            border-color: rgba(255, 255, 255, 0.20);
+            color: #88ddff;
+            transform: scale(1.02);
+            box-shadow: 0 0 30px rgba(100, 200, 255, 0.04);
+        }
+        #bottom-controls button.primary {
+            background: rgba(100, 200, 255, 0.08);
+            border-color: rgba(100, 200, 255, 0.20);
+            color: #88ddff;
+        }
+        #bottom-controls button.primary:hover {
+            background: rgba(100, 200, 255, 0.15);
+            border-color: rgba(100, 200, 255, 0.30);
+        }
+        #bottom-controls button.danger {
+            border-color: rgba(255, 100, 100, 0.15);
+            color: rgba(255, 150, 150, 0.6);
+        }
+        #bottom-controls button.danger:hover {
+            border-color: rgba(255, 100, 100, 0.30);
+            color: #ff8888;
+            background: rgba(255, 100, 100, 0.05);
+        }
+
+        /* 右侧卡牌槽（可拖拽） */
+        #card-slot {
+            position: absolute;
+            right: 24px;
+            bottom: 110px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+            z-index: 25;
+            align-items: flex-end;
+        }
+        .slot-card {
+            padding: 6px 16px 6px 12px;
+            border-radius: 40px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 14px;
+            color: #c8e8ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'VT323', monospace;
+            transition: 0.2s;
+            cursor: grab;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            user-select: none;
+        }
+        .slot-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        .slot-card:active {
+            cursor: grabbing;
+        }
+        .slot-card .icon { font-size: 18px; }
+        .slot-card .name { color: #88ddff; letter-spacing: 1px; }
+        .slot-card .effect { color: rgba(180, 210, 230, 0.50); font-size: 13px; }
+
+        /* 隐藏导出 */
+        #secret-export {
+            position: absolute;
+            bottom: 110px;
+            right: 230px;
+            pointer-events: auto;
+            z-index: 45;
+            opacity: 0.20;
+            transition: opacity 0.30s;
+            font-size: 13px;
+            font-family: 'VT323', monospace;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 40px;
+            color: #88ddff;
+            padding: 4px 16px;
+            cursor: pointer;
+            letter-spacing: 2px;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        #secret-export:hover {
+            opacity: 0.60;
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        @media (max-width: 700px) {
+            #top-bar .stats .item .label { display: none; }
+            #top-bar { padding: 6px 16px; margin: 8px 12px; border-radius: 30px; font-size: 13px; }
+            #top-bar .logo { font-size: 18px; }
+            .note-h { width: 50px; height: 50px; font-size: 24px; border-radius: 25px; }
+            #judge-zone { width: 16px; }
+            #card-popup { width: 170px; right: 12px; padding: 14px 16px; }
+            #bottom-controls { padding: 10px 16px; gap: 8px; border-radius: 40px; }
+            #bottom-controls button { font-size: 14px; padding: 6px 14px; }
+            #card-slot { right: 12px; bottom: 90px; }
+            .slot-card { font-size: 12px; padding: 4px 12px; }
+            #secret-export { right: 100px; bottom: 90px; font-size: 11px; }
+            #main-area { margin: 8px 12px; border-radius: 30px; }
+            #three-container { border-radius: 30px; }
+            #card-slot-area { height: 50px; gap: 8px; }
+            .slot-place { width: 50px; height: 42px; }
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="ascii-bg"></canvas>
+
+<div id="app">
+
+    <div id="top-bar">
+        <div class="logo">
+            <span class="suit">✦</span>
+            <span>RHYTHM·CUBE</span>
+            <span style="font-size:14px; color:rgba(180,210,230,0.30);">✦ v3.1</span>
+        </div>
+        <div class="stats">
+            <div class="item"><span class="label">✦ 得分</span><span class="value gold" id="scoreDisplay">0</span></div>
+            <div class="item"><span class="label">◈ 连击</span><span class="value green" id="comboDisplay">0</span></div>
+            <div class="item"><span class="label">▣ 卡牌</span><span class="value cyan" id="cardCountDisplay">0</span></div>
+            <div class="item"><span class="label">⏣ 状态</span><span class="value" id="statusDisplay" style="font-size:15px; color:rgba(180,210,230,0.40);">待命</span></div>
+        </div>
+    </div>
+
+    <div id="main-area">
+        <div id="three-container"></div>
+
+        <div id="game-overlay">
+            <!-- 横向判定区 -->
+            <div id="judge-zone">
+                <span class="label">JUDGE</span>
+            </div>
+
+            <!-- 卡牌插槽区 -->
+            <div id="card-slot-area">
+                <!-- 由 JS 生成 4 个插槽 -->
+            </div>
+
+            <!-- 横向滚动容器 -->
+            <div id="scroll-container-h"></div>
+
+            <!-- 暴击特效 -->
+            <div id="crit-effect">⚡ CRIT!</div>
+
+            <!-- 卡牌弹出 -->
+            <div id="card-popup">
+                <div class="card-suit">✦</div>
+                <div class="card-title" id="popupTitle">🃏 小丑牌</div>
+                <div class="card-effect" id="popupEffect">+5 暴击倍率</div>
+                <div class="card-sub" id="popupSub">「 节奏大师 」</div>
+            </div>
+
+            <!-- 右侧卡牌槽（可拖拽） -->
+            <div id="card-slot"></div>
+
+            <!-- 隐藏导出 -->
+            <button id="secret-export" title="导出数据 (JSON/CSV)">⏣ 导出</button>
+
+            <!-- 底部控制 -->
+            <div id="bottom-controls">
+                <button id="startBtn" class="primary">▶ 开始</button>
+                <button id="pauseBtn">⏸ 暂停</button>
+                <button id="resetBtn" class="danger">↺ 重置</button>
+                <button id="scrambleBtn">🎲 打乱</button>
+                <button id="cardTestBtn">🃏 抽卡</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+    }
+}
+</script>
+
+<script type="module">
+// ================================================================
+//  0. ASCII 代码雨背景 (同前)
+// ================================================================
+const bgCanvas = document.getElementById('ascii-bg');
+const ctx = bgCanvas.getContext('2d');
+let W, H;
+
+function resizeBg() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    bgCanvas.width = W;
+    bgCanvas.height = H;
+}
+resizeBg();
+window.addEventListener('resize', resizeBg);
+
+const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/';
+const COLUMN_WIDTH = 18;
+const FONT_SIZE = 20;
+const SPEED = 0.8;
+
+let cols = Math.ceil(W / COLUMN_WIDTH);
+let drops = [];
+
+function initDrops() {
+    drops = [];
+    for (let i = 0; i < cols; i++) {
+        drops.push({
+            y: Math.random() * -H,
+            length: 10 + Math.floor(Math.random() * 25),
+            speed: 0.5 + Math.random() * 1.2,
+            chars: [],
+        });
+        const drop = drops[i];
+        for (let j = 0; j < drop.length; j++) {
+            drop.chars[j] = CHARS[Math.floor(Math.random() * CHARS.length)];
+        }
+    }
+}
+initDrops();
+
+function drawRain() {
+    ctx.fillStyle = 'rgba(10, 14, 26, 0.08)';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.font = `${FONT_SIZE}px 'VT323', monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (let i = 0; i < drops.length; i++) {
+        const drop = drops[i];
+        const x = i * COLUMN_WIDTH + COLUMN_WIDTH / 2;
+        drop.y += drop.speed * SPEED;
+        if (drop.y > H + 20) {
+            drop.y = -drop.length * FONT_SIZE - Math.random() * 100;
+            drop.speed = 0.5 + Math.random() * 1.2;
+            drop.length = 10 + Math.floor(Math.random() * 25);
+            drop.chars = [];
+            for (let j = 0; j < drop.length; j++) {
+                drop.chars[j] = CHARS[Math.floor(Math.random() * CHARS.length)];
+            }
+        }
+        for (let j = 0; j < drop.length; j++) {
+            const yPos = drop.y - j * FONT_SIZE;
+            if (yPos < -FONT_SIZE || yPos > H + FONT_SIZE) continue;
+            const char = drop.chars[j] || ' ';
+            const brightness = 1 - j / drop.length;
+            const blue = Math.floor(80 + 175 * brightness);
+            const alpha = 0.2 + 0.7 * brightness;
+            ctx.fillStyle = `rgba(0, ${Math.floor(blue*0.6)}, ${Math.floor(180 + 75*brightness)}, ${alpha})`;
+            if (j === 0) {
+                ctx.fillStyle = `rgba(100, 220, 255, 0.90)`;
+                ctx.shadowColor = '#00d4ff';
+                ctx.shadowBlur = 16;
+            } else {
+                ctx.shadowBlur = 0;
+            }
+            ctx.fillText(char, x, yPos);
+            ctx.shadowBlur = 0;
+        }
+    }
+    if (Math.random() < 0.01) {
+        ctx.fillStyle = 'rgba(0, 212, 255, 0.03)';
+        ctx.fillRect(0, Math.random() * H, W, 2 + Math.random() * 4);
+    }
+    requestAnimationFrame(drawRain);
+}
+drawRain();
+
+window.addEventListener('resize', () => {
+    resizeBg();
+    cols = Math.ceil(W / COLUMN_WIDTH);
+    const oldDrops = drops;
+    drops = [];
+    for (let i = 0; i < cols; i++) {
+        if (i < oldDrops.length) {
+            drops.push(oldDrops[i]);
+        } else {
+            drops.push({
+                y: Math.random() * -H,
+                length: 10 + Math.floor(Math.random() * 25),
+                speed: 0.5 + Math.random() * 1.2,
+                chars: [],
+            });
+            const drop = drops[i];
+            for (let j = 0; j < drop.length; j++) {
+                drop.chars[j] = CHARS[Math.floor(Math.random() * CHARS.length)];
+            }
+        }
+    }
+});
+
+// ================================================================
+//  1. Three.js 魔方 — 圆形色块 (同前)
+// ================================================================
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container = document.getElementById('three-container');
+const scene = new THREE.Scene();
+scene.background = null;
+
+const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+camera.position.set(4, 3, 6);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x000000, 0);
+container.appendChild(renderer.domElement);
+
+const orbitControls = new OrbitControls(camera, renderer.domElement);
+orbitControls.enableDamping = true;
+orbitControls.dampingFactor = 0.06;
+orbitControls.rotateSpeed = 0.6;
+orbitControls.autoRotate = false;
+orbitControls.target.set(0, 0, 0);
+
+// 灯光
+const ambient = new THREE.AmbientLight(0x446688, 0.6);
+scene.add(ambient);
+const dirLight = new THREE.DirectionalLight(0x88ddff, 0.9);
+dirLight.position.set(4, 6, 5);
+scene.add(dirLight);
+const pointLight = new THREE.PointLight(0x88ddff, 0.5, 15);
+pointLight.position.set(-3, 2, 3);
+scene.add(pointLight);
+const backLight = new THREE.DirectionalLight(0x4488aa, 0.4);
+backLight.position.set(-3, -2, -6);
+scene.add(backLight);
+
+// ---- 生成圆形纹理 ----
+function createCircleTexture(color, size = 128) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, size, size);
+    const center = size / 2;
+    const radius = size * 0.42;
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.closePath();
+    const c = new THREE.Color(color);
+    ctx.fillStyle = `rgb(${c.r*255|0}, ${c.g*255|0}, ${c.b*255|0})`;
+    ctx.fill();
+    const grad = ctx.createRadialGradient(center*0.7, center*0.7, 0, center, center, radius);
+    grad.addColorStop(0, 'rgba(255,255,255,0.2)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.fill();
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+}
+
+// ---- 创建魔方 ----
+const cubeSize = 0.88;
+const gap = 0.07;
+const spacing = cubeSize + gap;
+const faceColors = [
+    0xff2244, 0xff8800, 0xeeeeff, 0xffdd00, 0x22dd66, 0x2266ff
+];
+let cubes = [];
+
+const textures = faceColors.map(c => createCircleTexture(c));
+
+function makeMat(x, y, z) {
+    const matConfig = (colorIdx) => ({
+        map: textures[colorIdx],
+        transparent: true,
+        opacity: 0.85,
+        roughness: 0.3,
+        metalness: 0.2,
+        emissive: new THREE.Color(faceColors[colorIdx]).multiplyScalar(0.1),
+        side: THREE.DoubleSide,
+        depthWrite: true,
+    });
+    const mats = [
+        (x===1) ? new THREE.MeshStandardMaterial(matConfig(0)) : new THREE.MeshStandardMaterial({ color: 0x1a2a3a, transparent: true, opacity: 0.3 }),
+        (x===-1) ? new THREE.MeshStandardMaterial(matConfig(1)) : new THREE.MeshStandardMaterial({ color: 0x1a2a3a, transparent: true, opacity: 0.3 }),
+        (y===1) ? new THREE.MeshStandardMaterial(matConfig(2)) : new THREE.MeshStandardMaterial({ color: 0x1a2a3a, transparent: true, opacity: 0.3 }),
+        (y===-1) ? new THREE.MeshStandardMaterial(matConfig(3)) : new THREE.MeshStandardMaterial({ color: 0x1a2a3a, transparent: true, opacity: 0.3 }),
+        (z===1) ? new THREE.MeshStandardMaterial(matConfig(4)) : new THREE.MeshStandardMaterial({ color: 0x1a2a3a, transparent: true, opacity: 0.3 }),
+        (z===-1) ? new THREE.MeshStandardMaterial(matConfig(5)) : new THREE.MeshStandardMaterial({ color: 0x1a2a3a, transparent: true, opacity: 0.3 }),
+    ];
+    return mats;
+}
+
+function buildCube() {
+    cubes.forEach(c => scene.remove(c));
+    cubes = [];
+    for (let x = -1; x <= 1; x++) {
+        for (let y = -1; y <= 1; y++) {
+            for (let z = -1; z <= 1; z++) {
+                if (x === 0 && y === 0 && z === 0) continue;
+                const mats = makeMat(x, y, z);
+                const geo = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+                const mesh = new THREE.Mesh(geo, mats);
+                mesh.position.set(x * spacing, y * spacing, z * spacing);
+                mesh.userData = { ix: x, iy: y, iz: z };
+                scene.add(mesh);
+                cubes.push(mesh);
+            }
+        }
+    }
+}
+buildCube();
+
+// ---- 粒子环绕 ----
+const particleCount = 800;
+const particleGeo = new THREE.BufferGeometry();
+const particlePos = new Float32Array(particleCount * 3);
+const particleColors = new Float32Array(particleCount * 3);
+const particleSpeeds = [];
+for (let i = 0; i < particleCount; i++) {
+    const radius = 2.5 + Math.random() * 1.0;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    particlePos[i*3] = radius * Math.sin(phi) * Math.cos(theta);
+    particlePos[i*3+1] = radius * Math.sin(phi) * Math.sin(theta);
+    particlePos[i*3+2] = radius * Math.cos(phi);
+    const color = new THREE.Color().setHSL(0.55 + Math.random()*0.2, 0.8, 0.5 + Math.random()*0.3);
+    particleColors[i*3] = color.r;
+    particleColors[i*3+1] = color.g;
+    particleColors[i*3+2] = color.b;
+    particleSpeeds.push({
+        theta: 0.001 + Math.random() * 0.003,
+        phi: 0.001 + Math.random() * 0.003,
+    });
+}
+particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+particleGeo.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+
+const particleMat = new THREE.PointsMaterial({
+    size: 0.05,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.7,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true,
+});
+const particleSystem = new THREE.Points(particleGeo, particleMat);
+scene.add(particleSystem);
+
+const particleAngles = [];
+for (let i = 0; i < particleCount; i++) {
+    const pos = particleGeo.attributes.position.array;
+    const r = Math.sqrt(pos[i*3]*pos[i*3] + pos[i*3+1]*pos[i*3+1] + pos[i*3+2]*pos[i*3+2]);
+    const theta = Math.atan2(pos[i*3+1], pos[i*3]);
+    const phi = Math.acos(pos[i*3+2] / r);
+    particleAngles.push({ r, theta, phi });
+}
+
+// ---- 魔方旋转逻辑 ----
+let isAnimating = false;
+const queue = [];
+
+function getCubesOnLayer(axis, layerIndex) {
+    const eps = 0.01;
+    const result = [];
+    for (const cube of cubes) {
+        let pos;
+        if (axis === 'x') pos = cube.position.x;
+        else if (axis === 'y') pos = cube.position.y;
+        else if (axis === 'z') pos = cube.position.z;
+        if (Math.abs(pos - layerIndex * spacing) < eps) {
+            result.push(cube);
+        }
+    }
+    return result;
+}
+
+function animateRotation(axis, layerIndex, angle, duration = 280) {
+    return new Promise((resolve) => {
+        const layerCubes = getCubesOnLayer(axis, layerIndex);
+        if (layerCubes.length === 0) { resolve(); return; }
+        const group = new THREE.Group();
+        layerCubes.forEach(cube => {
+            scene.remove(cube);
+            group.add(cube);
+        });
+        scene.add(group);
+
+        const rotAxis = new THREE.Vector3(axis==='x'?1:0, axis==='y'?1:0, axis==='z'?1:0);
+        const startQuat = group.quaternion.clone();
+        const endQuat = new THREE.Quaternion().setFromAxisAngle(rotAxis, angle).multiply(startQuat);
+        const startTime = performance.now();
+
+        function update() {
+            const now = performance.now();
+            let t = Math.min((now - startTime) / duration, 1);
+            const ease = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+            group.quaternion.slerpQuaternions(startQuat, endQuat, ease);
+            if (t < 1) {
+                requestAnimationFrame(update);
+            } else {
+                group.quaternion.copy(endQuat);
+                group.updateMatrixWorld(true);
+                const children = [...group.children];
+                children.forEach(cube => {
+                    const wp = new THREE.Vector3();
+                    const wq = new THREE.Quaternion();
+                    const ws = new THREE.Vector3();
+                    cube.getWorldPosition(wp);
+                    cube.getWorldQuaternion(wq);
+                    cube.getWorldScale(ws);
+                    group.remove(cube);
+                    cube.position.copy(wp);
+                    cube.quaternion.copy(wq);
+                    cube.scale.copy(ws);
+                    scene.add(cube);
+                    cube.userData.ix = Math.round(cube.position.x / spacing);
+                    cube.userData.iy = Math.round(cube.position.y / spacing);
+                    cube.userData.iz = Math.round(cube.position.z / spacing);
+                });
+                scene.remove(group);
+                resolve();
+            }
+        }
+        update();
+    });
+}
+
+async function processQueue() {
+    if (isAnimating) return;
+    isAnimating = true;
+    while (queue.length > 0) {
+        const { axis, layerIndex, angle } = queue.shift();
+        await animateRotation(axis, layerIndex, angle);
+    }
+    isAnimating = false;
+}
+
+function enqueueRotation(axis, layerIndex, angle) {
+    queue.push({ axis, layerIndex, angle });
+    if (!isAnimating) processQueue();
+}
+
+function rotateFace(face, dir = 1) {
+    const angle = -dir * Math.PI / 2;
+    switch(face) {
+        case 'U': enqueueRotation('y', 1, angle); break;
+        case 'D': enqueueRotation('y', -1, -angle); break;
+        case 'R': enqueueRotation('x', 1, angle); break;
+        case 'L': enqueueRotation('x', -1, -angle); break;
+        case 'F': enqueueRotation('z', 1, angle); break;
+        case 'B': enqueueRotation('z', -1, -angle); break;
+        default: break;
+    }
+}
+
+// ---- 暴击脉冲 ----
+let critPulse = 0;
+function pulseArt() { critPulse = 1.0; }
+
+// ---- 3D 动画 ----
+let time = 0;
+function animateScene() {
+    requestAnimationFrame(animateScene);
+    time += 0.005;
+
+    const positions = particleSystem.geometry.attributes.position.array;
+    for (let i = 0; i < particleCount; i++) {
+        const angle = particleAngles[i];
+        angle.theta += particleSpeeds[i].theta * 0.5;
+        angle.phi += particleSpeeds[i].phi * 0.3;
+        const r = angle.r + Math.sin(time * 0.5 + i) * 0.03;
+        positions[i*3] = r * Math.sin(angle.phi) * Math.cos(angle.theta);
+        positions[i*3+1] = r * Math.sin(angle.phi) * Math.sin(angle.theta);
+        positions[i*3+2] = r * Math.cos(angle.phi);
+    }
+    particleSystem.geometry.attributes.position.needsUpdate = true;
+
+    if (critPulse > 0.01) {
+        const scale = 1 + critPulse * 0.06;
+        cubes.forEach(cube => cube.scale.set(scale, scale, scale));
+        particleMat.size = 0.06 + critPulse * 0.08;
+        particleMat.opacity = 0.9;
+        const colors = particleSystem.geometry.attributes.color.array;
+        for (let i = 0; i < particleCount; i++) {
+            const c = new THREE.Color().setHSL(0.55 + critPulse * 0.2, 0.9, 0.6 + critPulse * 0.3);
+            colors[i*3] = c.r;
+            colors[i*3+1] = c.g;
+            colors[i*3+2] = c.b;
+        }
+        particleSystem.geometry.attributes.color.needsUpdate = true;
+        critPulse *= 0.95;
+    } else {
+        critPulse = 0;
+        cubes.forEach(cube => cube.scale.set(1, 1, 1));
+        particleMat.size = 0.05;
+        particleMat.opacity = 0.7;
+        const colors = particleSystem.geometry.attributes.color.array;
+        for (let i = 0; i < particleCount; i++) {
+            const c = new THREE.Color().setHSL(0.55 + Math.random()*0.2, 0.8, 0.5 + Math.random()*0.3);
+            colors[i*3] = c.r;
+            colors[i*3+1] = c.g;
+            colors[i*3+2] = c.b;
+        }
+        particleSystem.geometry.attributes.color.needsUpdate = true;
+    }
+
+    orbitControls.update();
+    renderer.render(scene, camera);
+}
+animateScene();
+
+window.addEventListener('resize', () => {
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+});
+
+window.__pulseArt = pulseArt;
+
+// ================================================================
+//  2. 卡牌系统 + 拖拽逻辑
+// ================================================================
+const CARD_POOL = [
+    { id: 'joker1', name: '节奏小丑', effect: '+3 暴击倍率', desc: '每次暴击额外 +3 分', icon: '✦' },
+    { id: 'joker2', name: '连击小丑', effect: '连击 ≥5 时 +5 分', desc: '连击数越高越强', icon: '🌀' },
+    { id: 'joker3', name: '闪电小丑', effect: '暴击时双倍得分', desc: '电光石火！', icon: '⚡' },
+    { id: 'joker4', name: '百变小丑', effect: '随机 +2~8 分', desc: '命运之轮', icon: '🃏' },
+    { id: 'joker5', name: '星尘小丑', effect: '每张卡牌 +1 分', desc: '群星之力', icon: '🌟' },
+    { id: 'joker6', name: '烈焰小丑', effect: '连击中断时 +3 分', desc: '余烬重生', icon: '🔥' },
+];
+
+let collectedCards = [];
+let cardEffects = {
+    critBonus: 0,
+    comboBonus: 0,
+    doubleCrit: false,
+    randomBonus: 0,
+    perCardBonus: 0,
+    missBonus: 0,
+};
+
+function applyCardEffect(cardId) {
+    switch(cardId) {
+        case 'joker1': cardEffects.critBonus += 3; break;
+        case 'joker2': cardEffects.comboBonus = 5; break;
+        case 'joker3': cardEffects.doubleCrit = true; break;
+        case 'joker4': cardEffects.randomBonus += Math.floor(Math.random() * 6) + 2; break;
+        case 'joker5': cardEffects.perCardBonus += 1; break;
+        case 'joker6': cardEffects.missBonus += 3; break;
+        default: break;
+    }
+}
+
+function drawCard() {
+    if (collectedCards.length >= 5) {
+        showCardPopup('⚠️ 卡牌已满', '最多持有 5 张', '');
+        return null;
+    }
+    const available = CARD_POOL.filter(c => !collectedCards.find(cc => cc.id === c.id));
+    if (available.length === 0) {
+        showCardPopup('📦 已集齐', '所有卡牌已收集！', '');
+        return null;
+    }
+    const card = available[Math.floor(Math.random() * available.length)];
+    collectedCards.push(card);
+    applyCardEffect(card.id);
+    updateCardSlot();
+    updateHUD();
+    showCardPopup(card.icon + ' ' + card.name, card.effect, card.desc);
+    return card;
+}
+
+function showCardPopup(title, effect, sub) {
+    const popup = document.getElementById('card-popup');
+    document.getElementById('popupTitle').textContent = title;
+    document.getElementById('popupEffect').textContent = effect;
+    document.getElementById('popupSub').textContent = sub || '✦ 小丑牌 ✦';
+    popup.classList.add('show');
+    clearTimeout(popup._timer);
+    popup._timer = setTimeout(() => popup.classList.remove('show'), 2200);
+}
+
+// ---- 右侧卡牌槽渲染 ----
+function updateCardSlot() {
+    const slot = document.getElementById('card-slot');
+    slot.innerHTML = '';
+    collectedCards.forEach((c, index) => {
+        const div = document.createElement('div');
+        div.className = 'slot-card';
+        div.draggable = true;
+        div.dataset.cardIndex = index;
+        div.dataset.cardId = c.id;
+        div.innerHTML = `<span class="icon">${c.icon}</span><span class="name">${c.name}</span><span class="effect">${c.effect}</span>`;
+        // 拖拽事件
+        div.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', JSON.stringify({ cardId: c.id, cardIndex: index }));
+            e.dataTransfer.effectAllowed = 'move';
+            div.style.opacity = '0.4';
+        });
+        div.addEventListener('dragend', (e) => {
+            div.style.opacity = '1';
+        });
+        slot.appendChild(div);
+    });
+}
+
+// ---- 插槽区域 ----
+const slotArea = document.getElementById('card-slot-area');
+const NUM_SLOTS = 4;
+let slotStates = []; // 每个槽位存储 cardId 或 null
+
+function initSlots() {
+    slotArea.innerHTML = '';
+    for (let i = 0; i < NUM_SLOTS; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'slot-place';
+        slot.dataset.slotIndex = i;
+        slot.textContent = '⬡';
+        // 拖拽目标事件
+        slot.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            slot.classList.add('drag-over');
+        });
+        slot.addEventListener('dragleave', () => {
+            slot.classList.remove('drag-over');
+        });
+        slot.addEventListener('drop', (e) => {
+            e.preventDefault();
+            slot.classList.remove('drag-over');
+            const data = e.dataTransfer.getData('text/plain');
+            if (!data) return;
+            const { cardId, cardIndex } = JSON.parse(data);
+            // 检查该卡牌是否已经在某个槽位
+            if (slotStates.some(s => s === cardId)) {
+                showCardPopup('⚠️ 重复', '该卡牌已放置', '');
+                return;
+            }
+            // 检查槽位是否已被占用
+            const idx = parseInt(slot.dataset.slotIndex);
+            if (slotStates[idx]) {
+                showCardPopup('⚠️ 槽位已满', '请先移除其他卡牌', '');
+                return;
+            }
+            // 从收集列表中移除该卡牌
+            const cardObj = collectedCards[cardIndex];
+            if (!cardObj) return;
+            // 移除卡牌效果（但保留，因为拖拽后仍然生效？我们设计为放入槽位后仍然生效，且移除卡牌图标）
+            // 但为了让槽位显示，我们从收集列表中移除该卡牌，并更新UI
+            collectedCards.splice(cardIndex, 1);
+            // 更新槽位状态
+            slotStates[idx] = cardId;
+            // 重新渲染右侧卡牌槽
+            updateCardSlot();
+            // 更新插槽显示
+            renderSlots();
+            // 重新计算卡牌效果（重新应用所有已放置的卡牌）
+            recalcCardEffects();
+            showCardPopup('✅ 放置成功', cardObj.icon + ' ' + cardObj.name, '已放入音游轴');
+        });
+        slotArea.appendChild(slot);
+        slotStates.push(null);
+    }
+}
+initSlots();
+
+function renderSlots() {
+    const slots = slotArea.querySelectorAll('.slot-place');
+    slots.forEach((slot, i) => {
+        const cardId = slotStates[i];
+        if (cardId) {
+            const card = CARD_POOL.find(c => c.id === cardId);
+            if (card) {
+                slot.className = 'slot-place dropped';
+                slot.innerHTML = `<span class="card-icon">${card.icon}</span><span class="card-name">${card.name}</span>`;
+                slot.style.cursor = 'default';
+            }
+        } else {
+            slot.className = 'slot-place';
+            slot.textContent = '⬡';
+            slot.style.cursor = 'grab';
+        }
+    });
+}
+
+function recalcCardEffects() {
+    // 重置所有效果
+    cardEffects = {
+        critBonus: 0,
+        comboBonus: 0,
+        doubleCrit: false,
+        randomBonus: 0,
+        perCardBonus: 0,
+        missBonus: 0,
+    };
+    // 重新应用已放置的卡牌
+    slotStates.forEach(cardId => {
+        if (cardId) {
+            applyCardEffect(cardId);
+        }
+    });
+    // 同时保留已收集但尚未放置的卡牌效果？我们设计为只有放置的才生效，所以不重新应用收集列表
+    // 但收集列表中的卡牌已经从列表中移除了，所以不影响
+    updateHUD();
+}
+
+// ---- 横向音游引擎 ----
+const game = {
+    notes: [],
+    speed: 1.2,
+    spawnInterval: 900,
+    lastSpawn: 0,
+    isRunning: false,
+    isPaused: false,
+    score: 0,
+    combo: 0,
+    maxCombo: 0,
+    formula: [],
+    currentIndex: 0,
+    container: document.getElementById('scroll-container-h'),
+    judgeZone: document.getElementById('judge-zone'),
+    scoreDisplay: document.getElementById('scoreDisplay'),
+    comboDisplay: document.getElementById('comboDisplay'),
+    statusDisplay: document.getElementById('statusDisplay'),
+    critEffect: document.getElementById('crit-effect'),
+    cardCountDisplay: document.getElementById('cardCountDisplay'),
+    judgeX: 0,
+};
+
+function updateJudgeX() {
+    const rect = game.judgeZone.getBoundingClientRect();
+    const containerRect = game.container.getBoundingClientRect();
+    game.judgeX = rect.left - containerRect.left + rect.width / 2;
+}
+updateJudgeX();
+window.addEventListener('resize', updateJudgeX);
+
+function updateHUD() {
+    game.scoreDisplay.textContent = game.score;
+    game.comboDisplay.textContent = game.combo;
+    game.cardCountDisplay.textContent = collectedCards.length;
+}
+
+function createNoteH(char) {
+    const el = document.createElement('div');
+    el.className = 'note-h';
+    el.textContent = char;
+    const containerRect = game.container.getBoundingClientRect();
+    el.style.left = (containerRect.width - 40) + 'px';
+    el.style.top = (20 + Math.random() * 60) + '%';
+    game.container.appendChild(el);
+    return el;
+}
+
+function spawnNoteH() {
+    if (game.currentIndex >= game.formula.length) {
+        game.statusDisplay.textContent = '✅ 完成!';
+        game.isRunning = false;
+        return;
+    }
+    const char = game.formula[game.currentIndex];
+    const el = createNoteH(char);
+    game.notes.push({ char, element: el, x: parseFloat(el.style.left), active: false, judged: false });
+    game.currentIndex++;
+}
+
+function updateNotesH() {
+    if (game.isPaused || !game.isRunning) return;
+    const containerWidth = game.container.getBoundingClientRect().width;
+    const judgeX = game.judgeX;
+
+    for (let i = game.notes.length - 1; i >= 0; i--) {
+        const note = game.notes[i];
+        note.x -= game.speed;
+        note.element.style.left = note.x + 'px';
+        const inJudge = Math.abs(note.x - judgeX) < 30;
+        note.active = inJudge;
+        note.element.classList.toggle('in-judge', inJudge);
+        if (note.x < -80) {
+            if (!note.judged) {
+                game.combo = 0;
+                if (cardEffects.missBonus > 0) {
+                    game.score += cardEffects.missBonus;
+                    showCardPopup('🔥 余烬', `+${cardEffects.missBonus} 分`, '烈焰小丑触发');
+                }
+                game.statusDisplay.textContent = '❌ Miss';
+                note.element.classList.add('miss');
+                setTimeout(() => note.element.remove(), 300);
+                game.notes.splice(i, 1);
+                updateHUD();
+            } else {
+                note.element.remove();
+                game.notes.splice(i, 1);
+            }
+        }
+    }
+    const hasActive = game.notes.some(n => n.active && !n.judged);
+    game.judgeZone.classList.toggle('active', hasActive);
+}
+
+function handleKeyPressH(char) {
+    if (!game.isRunning || game.isPaused) return false;
+    for (let i = 0; i < game.notes.length; i++) {
+        const note = game.notes[i];
+        if (note.active && !note.judged && note.char === char) {
+            note.judged = true;
+            note.element.classList.remove('in-judge');
+            note.element.classList.add('crit');
+
+            let points = 10 + Math.floor(game.combo / 4) * 2;
+            points += cardEffects.critBonus;
+            if (cardEffects.doubleCrit) points *= 2;
+            if (cardEffects.comboBonus > 0 && game.combo >= 5) points += cardEffects.comboBonus;
+            if (cardEffects.randomBonus > 0) points += Math.floor(Math.random() * cardEffects.randomBonus) + 1;
+            if (cardEffects.perCardBonus > 0) points += cardEffects.perCardBonus * collectedCards.length;
+
+            game.score += points;
+            game.combo += 1;
+            if (game.combo > game.maxCombo) game.maxCombo = game.combo;
+            updateHUD();
+            showCritEffect();
+            game.statusDisplay.textContent = `⚡ CRIT! x${game.combo} +${points}`;
+
+            if (window.__pulseArt) window.__pulseArt();
+            if (['U','D','R','L','F','B'].includes(char)) {
+                rotateFace(char, 1);
+            }
+
+            if (Math.random() < 0.08 && collectedCards.length < 5) {
+                setTimeout(() => drawCard(), 300);
+            }
+
+            setTimeout(() => { note.element.remove(); }, 400);
+            game.notes.splice(i, 1);
+            return true;
+        }
+    }
+    return false;
+}
+
+function showCritEffect() {
+    const el = game.critEffect;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 700);
+}
+
+function loadFormula(str) {
+    const cleaned = str.toUpperCase().replace(/\s+/g, ' ').trim();
+    const chars = cleaned.split(' ').filter(c => c.length === 1 && 'UDFRLB'.includes(c));
+    if (chars.length === 0) {
+        game.statusDisplay.textContent = '⚠️ 无效公式';
+        return false;
+    }
+    game.formula = chars;
+    game.currentIndex = 0;
+    game.notes.forEach(n => n.element.remove());
+    game.notes = [];
+    game.statusDisplay.textContent = `📝 ${chars.length} 步`;
+    return true;
+}
+
+function startGame() {
+    if (game.formula.length === 0) {
+        loadFormula('U F R F D B');
+    }
+    game.isRunning = true;
+    game.isPaused = false;
+    game.lastSpawn = performance.now();
+    game.statusDisplay.textContent = '▶ 运行中';
+    game.notes.forEach(n => n.element.remove());
+    game.notes = [];
+    game.currentIndex = 0;
+    spawnNoteH();
+}
+
+function togglePause() {
+    if (!game.isRunning) return;
+    game.isPaused = !game.isPaused;
+    game.statusDisplay.textContent = game.isPaused ? '⏸ 暂停' : '▶ 运行中';
+}
+
+function resetGame() {
+    game.isRunning = false;
+    game.isPaused = false;
+    game.notes.forEach(n => n.element.remove());
+    game.notes = [];
+    game.currentIndex = 0;
+    game.score = 0;
+    game.combo = 0;
+    game.maxCombo = 0;
+    queue.length = 0;
+    // 重置插槽
+    slotStates.fill(null);
+    renderSlots();
+    // 重置卡牌效果（只保留已放置的，但已放置为空，所以全重置）
+    recalcCardEffects();
+    // 重新加载默认公式
+    loadFormula('U F R F D B');
+    updateHUD();
+    game.statusDisplay.textContent = '⏸ 待命';
+}
+
+function gameLoopH(now) {
+    if (game.isRunning && !game.isPaused) {
+        if (game.currentIndex < game.formula.length) {
+            if (now - game.lastSpawn > game.spawnInterval) {
+                spawnNoteH();
+                game.lastSpawn = now;
+            }
+        }
+        updateNotesH();
+    }
+    requestAnimationFrame(gameLoopH);
+}
+
+// ================================================================
+//  导出功能
+// ================================================================
+function getExportData() {
+    return {
+        timestamp: new Date().toISOString(),
+        score: game.score,
+        combo: game.combo,
+        maxCombo: game.maxCombo,
+        cards: collectedCards.map(c => ({ id: c.id, name: c.name, effect: c.effect })),
+        placedCards: slotStates.filter(id => id !== null),
+        formula: game.formula.join(' '),
+        stepsCompleted: game.currentIndex,
+        cardEffects: { ...cardEffects },
+    };
+}
+
+function exportJSON() {
+    const data = getExportData();
+    const json = JSON.stringify(data, null, 2);
+    downloadFile(json, 'rhythm-cube-data.json', 'application/json');
+}
+
+function exportCSV() {
+    const data = getExportData();
+    const headers = ['timestamp', 'score', 'combo', 'maxCombo', 'cards', 'placedCards', 'formula', 'stepsCompleted'];
+    const row = [
+        data.timestamp,
+        data.score,
+        data.combo,
+        data.maxCombo,
+        data.cards.map(c => c.name).join(';'),
+        data.placedCards.join(';'),
+        data.formula,
+        data.stepsCompleted,
+    ];
+    const csv = headers.join(',') + '\n' + row.map(v => `"${v}"`).join(',');
+    downloadFile(csv, 'rhythm-cube-data.csv', 'text/csv');
+}
+
+function downloadFile(content, filename, mime) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// ================================================================
+//  绑定 UI
+// ================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    loadFormula('U F R F D B');
+    updateHUD();
+    updateCardSlot();
+    updateJudgeX();
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('pauseBtn').addEventListener('click', togglePause);
+    document.getElementById('resetBtn').addEventListener('click', resetGame);
+
+    document.getElementById('scrambleBtn').addEventListener('click', () => {
+        const faces = ['U','D','R','L','F','B'];
+        for (let i = 0; i < 20; i++) {
+            const face = faces[Math.floor(Math.random() * faces.length)];
+            setTimeout(() => {
+                rotateFace(face, 1);
+                if (window.__pulseArt) window.__pulseArt();
+            }, i * 120);
+        }
+    });
+
+    document.getElementById('cardTestBtn').addEventListener('click', drawCard);
+
+    document.getElementById('secret-export').addEventListener('click', () => {
+        const choice = confirm('导出 JSON？\n点击「确定」导出 JSON\n点击「取消」导出 CSV');
+        if (choice) exportJSON();
+        else exportCSV();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        const key = e.key.toUpperCase();
+        if (game.isRunning && !game.isPaused) {
+            const handled = handleKeyPressH(key);
+            if (handled) { e.preventDefault(); return; }
+        }
+        if (['U','F','R','D','B','L'].includes(key)) {
+            e.preventDefault();
+            rotateFace(key, 1);
+            if (window.__pulseArt) window.__pulseArt();
+        }
+        if (key === ' ' || key === 'SPACE') {
+            e.preventDefault();
+            togglePause();
+        }
+        if (key === 'C' && e.ctrlKey) {
+            e.preventDefault();
+            drawCard();
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+        updateJudgeX();
+    });
+});
+
+requestAnimationFrame(gameLoopH);
+
+console.log('✦ RHYTHM·CUBE · 圆面魔方 + 横向音游 + 卡牌拖拽 ✦');
+console.log('   ⌨️  U F R D B L  → 旋转魔方 / 横向判定');
+console.log('   🃏  暴击抽卡，拖拽卡牌到音游轴插槽生效');
+console.log('   ⏣  右下角「导出」隐藏按钮');
+</script>
+</body>
+</html>
