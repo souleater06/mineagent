@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>✦ RHYTHM·CUBE · 圆面魔方 + 横向音游 + 卡牌拖拽 ✦</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>✦ RHYTHM·CUBE · 移动版 ✦</title>
     <style>
         * {
             margin: 0;
@@ -17,9 +17,11 @@
             color: #e0e8f0;
             font-family: 'VT323', 'Courier New', monospace;
             overflow: hidden;
-            height: 100vh;
-            width: 100vw;
+            height: 100dvh;
+            width: 100dvw;
             user-select: none;
+            touch-action: none;
+            position: fixed;
         }
 
         #ascii-bg {
@@ -37,8 +39,8 @@
         #app {
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            width: 100vw;
+            height: 100dvh;
+            width: 100dvw;
             position: relative;
             z-index: 1;
             pointer-events: none;
@@ -52,57 +54,57 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 24px;
-            margin: 12px 20px 0 20px;
-            border-radius: 40px;
+            padding: 4px 12px;
+            margin: 6px 8px 0 8px;
+            border-radius: 30px;
             flex-shrink: 0;
             z-index: 50;
-            font-size: 16px;
-            letter-spacing: 1px;
+            font-size: 13px;
+            letter-spacing: 0.5px;
             color: #c8e8ff;
             background: rgba(255, 255, 255, 0.04);
             backdrop-filter: blur(16px) saturate(180%);
             -webkit-backdrop-filter: blur(16px) saturate(180%);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            flex-wrap: wrap;
+            gap: 2px;
         }
         .logo {
             display: flex;
             align-items: center;
-            gap: 12px;
-            font-size: 22px;
+            gap: 4px;
+            font-size: 16px;
             color: #88ddff;
-            text-shadow: 0 0 20px rgba(100, 200, 255, 0.15);
+            text-shadow: 0 0 12px rgba(100, 200, 255, 0.15);
         }
-        .logo span { color: #c8e8ff; font-size: 18px; letter-spacing: 2px; }
-        .logo .suit { font-size: 26px; color: #88ddff; }
+        .logo span { color: #c8e8ff; font-size: 14px; letter-spacing: 1px; }
+        .logo .suit { font-size: 18px; color: #88ddff; }
 
         .stats {
             display: flex;
-            gap: 16px;
+            gap: 6px;
             align-items: center;
             flex-wrap: wrap;
         }
         .stats .item {
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 4px 14px 4px 10px;
-            border-radius: 40px;
+            gap: 2px;
+            padding: 2px 8px 2px 6px;
+            border-radius: 30px;
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid rgba(255, 255, 255, 0.06);
         }
         .stats .item .label {
-            color: rgba(180, 210, 230, 0.5);
-            font-size: 12px;
-            letter-spacing: 2px;
+            display: none;
         }
         .stats .item .value {
-            font-size: 20px;
+            font-size: 16px;
             font-weight: bold;
             color: #88ddff;
-            text-shadow: 0 0 16px rgba(100, 200, 255, 0.10);
-            min-width: 28px;
+            text-shadow: 0 0 12px rgba(100, 200, 255, 0.10);
+            min-width: 20px;
         }
 
         /* 主体区域 */
@@ -111,8 +113,8 @@
             position: relative;
             overflow: hidden;
             background: transparent;
-            margin: 12px 20px 12px 20px;
-            border-radius: 40px;
+            margin: 6px 8px 6px 8px;
+            border-radius: 30px;
             backdrop-filter: blur(2px);
             -webkit-backdrop-filter: blur(2px);
         }
@@ -122,7 +124,7 @@
             display: block;
             position: relative;
             z-index: 2;
-            border-radius: 40px;
+            border-radius: 30px;
             overflow: hidden;
         }
 
@@ -139,15 +141,15 @@
         /* ---- 横向音游判定区（左侧） ---- */
         #judge-zone {
             position: absolute;
-            left: 15%;
+            left: 12%;
             top: 50%;
             transform: translate(-50%, -50%);
-            width: 20px;
-            height: 70%;
+            width: 14px;
+            height: 60%;
             background: rgba(0, 212, 255, 0.08);
             border: 2px solid rgba(0, 212, 255, 0.20);
-            border-radius: 12px;
-            box-shadow: 0 0 30px rgba(0, 212, 255, 0.05);
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.05);
             pointer-events: none;
             transition: border-color 0.3s, box-shadow 0.3s;
             display: flex;
@@ -156,66 +158,67 @@
         }
         #judge-zone.active {
             border-color: rgba(100, 200, 255, 0.60);
-            box-shadow: 0 0 50px rgba(100, 200, 255, 0.15);
+            box-shadow: 0 0 30px rgba(100, 200, 255, 0.15);
         }
         #judge-zone .label {
             writing-mode: vertical-rl;
-            letter-spacing: 8px;
+            letter-spacing: 4px;
             color: rgba(180, 210, 230, 0.25);
-            font-size: 16px;
+            font-size: 12px;
         }
 
         /* ---- 卡牌插槽区域（在音游轴上方） ---- */
         #card-slot-area {
             position: absolute;
-            left: 18%;
-            top: 8%;
-            right: 18%;
-            height: 60px;
+            left: 10%;
+            right: 10%;
+            top: 6%;
+            height: 44px;
             display: flex;
-            gap: 12px;
+            gap: 6px;
             justify-content: center;
             pointer-events: auto;
             z-index: 26;
             background: rgba(255, 255, 255, 0.02);
-            border-radius: 40px;
-            padding: 4px 12px;
+            border-radius: 30px;
+            padding: 2px 8px;
             backdrop-filter: blur(4px);
             border: 1px dashed rgba(255, 255, 255, 0.06);
         }
         .slot-place {
-            width: 60px;
-            height: 50px;
-            border-radius: 30px;
+            width: 44px;
+            height: 38px;
+            border-radius: 20px;
             border: 2px dashed rgba(255, 255, 255, 0.10);
             background: rgba(255, 255, 255, 0.02);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-size: 10px;
             color: rgba(255, 255, 255, 0.15);
             transition: all 0.3s ease;
             cursor: grab;
             position: relative;
+            touch-action: none;
         }
         .slot-place.dropped {
             border-color: rgba(100, 200, 255, 0.40);
             background: rgba(100, 200, 255, 0.06);
             border-style: solid;
             color: #88ddff;
-            font-size: 16px;
+            font-size: 14px;
             cursor: default;
         }
         .slot-place.dropped .card-icon {
-            font-size: 24px;
+            font-size: 18px;
         }
         .slot-place .card-name {
             display: none;
         }
         .slot-place.dropped .card-name {
             display: inline;
-            font-size: 12px;
-            margin-left: 4px;
+            font-size: 10px;
+            margin-left: 2px;
             color: #88ddff;
         }
         .slot-place.drag-over {
@@ -238,9 +241,9 @@
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            width: 60px;
-            height: 60px;
-            border-radius: 30px;
+            width: 46px;
+            height: 46px;
+            border-radius: 23px;
             background: rgba(255, 255, 255, 0.04);
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
@@ -248,21 +251,21 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 30px;
+            font-size: 24px;
             font-weight: bold;
             color: #c8e8ff;
-            text-shadow: 0 0 16px rgba(100, 200, 255, 0.08);
+            text-shadow: 0 0 12px rgba(100, 200, 255, 0.08);
             pointer-events: none;
             will-change: transform, left;
             font-family: 'VT323', monospace;
             transition: background 0.2s, border-color 0.2s, transform 0.12s;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.20);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.20);
         }
         .note-h.in-judge {
             border-color: rgba(100, 200, 255, 0.40);
             background: rgba(100, 200, 255, 0.06);
-            transform: translateY(-50%) scale(1.08);
-            box-shadow: 0 0 30px rgba(100, 200, 255, 0.06);
+            transform: translateY(-50%) scale(1.06);
+            box-shadow: 0 0 20px rgba(100, 200, 255, 0.06);
         }
         .note-h.miss {
             border-color: rgba(255, 100, 100, 0.30);
@@ -272,8 +275,8 @@
         .note-h.crit {
             border-color: rgba(100, 200, 255, 0.60);
             background: rgba(100, 200, 255, 0.10);
-            transform: translateY(-50%) scale(1.35);
-            box-shadow: 0 0 50px rgba(100, 200, 255, 0.15);
+            transform: translateY(-50%) scale(1.25);
+            box-shadow: 0 0 30px rgba(100, 200, 255, 0.15);
         }
 
         /* 暴击特效 */
@@ -282,15 +285,15 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 72px;
+            font-size: 48px;
             font-weight: bold;
             color: #88ddff;
-            text-shadow: 0 0 40px rgba(100, 200, 255, 0.50), 0 0 80px rgba(50, 150, 255, 0.20);
+            text-shadow: 0 0 30px rgba(100, 200, 255, 0.50), 0 0 60px rgba(50, 150, 255, 0.20);
             opacity: 0;
             pointer-events: none;
             z-index: 30;
             font-family: 'VT323', monospace;
-            letter-spacing: 6px;
+            letter-spacing: 4px;
         }
         #crit-effect.show {
             opacity: 1;
@@ -298,7 +301,7 @@
         }
         @keyframes critPop {
             0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
-            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.8); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.6); }
             80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
             100% { opacity: 0; transform: translate(-50%, -60%) scale(1); }
         }
@@ -306,21 +309,21 @@
         /* 卡牌弹出 */
         #card-popup {
             position: absolute;
-            right: 40px;
+            right: 20px;
             top: 50%;
             transform: translateY(-50%);
-            width: 220px;
-            border-radius: 32px;
-            padding: 20px 24px;
+            width: 160px;
+            border-radius: 24px;
+            padding: 12px 16px;
             background: rgba(255, 255, 255, 0.04);
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.06);
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.35s ease, transform 0.35s ease;
-            transform: translateY(-50%) translateX(30px);
+            transform: translateY(-50%) translateX(20px);
             z-index: 35;
             font-family: 'VT323', monospace;
         }
@@ -330,73 +333,73 @@
         }
         #card-popup .card-title {
             color: #88ddff;
-            font-size: 24px;
-            letter-spacing: 2px;
-            margin-bottom: 4px;
-            text-shadow: 0 0 20px rgba(100, 200, 255, 0.10);
+            font-size: 18px;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+            text-shadow: 0 0 16px rgba(100, 200, 255, 0.10);
         }
         #card-popup .card-effect {
             color: #88ddff;
-            font-size: 18px;
+            font-size: 14px;
             border-top: 1px solid rgba(255, 255, 255, 0.06);
-            padding-top: 6px;
-            margin-top: 4px;
+            padding-top: 4px;
+            margin-top: 2px;
         }
         #card-popup .card-sub {
             color: rgba(180, 210, 230, 0.40);
-            font-size: 14px;
-            margin-top: 4px;
+            font-size: 12px;
+            margin-top: 2px;
             letter-spacing: 1px;
         }
         #card-popup .card-suit {
             position: absolute;
-            top: -10px;
-            right: 16px;
-            font-size: 28px;
+            top: -8px;
+            right: 12px;
+            font-size: 20px;
             color: rgba(180, 210, 230, 0.10);
         }
 
         /* 底部控制栏 */
         #bottom-controls {
             position: absolute;
-            bottom: 32px;
+            bottom: 16px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 12px;
+            gap: 6px;
             flex-wrap: wrap;
             justify-content: center;
             pointer-events: auto;
             z-index: 40;
-            padding: 14px 24px;
-            border-radius: 60px;
+            padding: 8px 12px;
+            border-radius: 40px;
             background: rgba(255, 255, 255, 0.04);
             backdrop-filter: blur(16px) saturate(180%);
             -webkit-backdrop-filter: blur(16px) saturate(180%);
             border: 1px solid rgba(255, 255, 255, 0.06);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.06);
         }
         #bottom-controls button {
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 40px;
+            border-radius: 30px;
             color: #c8e8ff;
-            padding: 8px 22px;
-            font-size: 16px;
+            padding: 4px 12px;
+            font-size: 13px;
             font-family: 'VT323', monospace;
             cursor: pointer;
             transition: all 0.25s ease;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
+            touch-action: manipulation;
         }
         #bottom-controls button:hover {
             background: rgba(255, 255, 255, 0.10);
             border-color: rgba(255, 255, 255, 0.20);
             color: #88ddff;
             transform: scale(1.02);
-            box-shadow: 0 0 30px rgba(100, 200, 255, 0.04);
         }
         #bottom-controls button.primary {
             background: rgba(100, 200, 255, 0.08);
@@ -420,62 +423,59 @@
         /* 右侧卡牌槽（可拖拽） */
         #card-slot {
             position: absolute;
-            right: 24px;
-            bottom: 110px;
+            right: 12px;
+            bottom: 80px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 6px;
             pointer-events: auto;
             z-index: 25;
             align-items: flex-end;
         }
         .slot-card {
-            padding: 6px 16px 6px 12px;
-            border-radius: 40px;
+            padding: 4px 12px 4px 8px;
+            border-radius: 30px;
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.06);
-            font-size: 14px;
+            font-size: 12px;
             color: #c8e8ff;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 6px;
             font-family: 'VT323', monospace;
             transition: 0.2s;
             cursor: grab;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
             user-select: none;
-        }
-        .slot-card:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.15);
+            touch-action: none;
         }
         .slot-card:active {
             cursor: grabbing;
         }
-        .slot-card .icon { font-size: 18px; }
-        .slot-card .name { color: #88ddff; letter-spacing: 1px; }
-        .slot-card .effect { color: rgba(180, 210, 230, 0.50); font-size: 13px; }
+        .slot-card .icon { font-size: 14px; }
+        .slot-card .name { color: #88ddff; letter-spacing: 1px; font-size: 11px; }
+        .slot-card .effect { display: none; }
 
         /* 隐藏导出 */
         #secret-export {
             position: absolute;
-            bottom: 110px;
-            right: 230px;
+            bottom: 80px;
+            right: 160px;
             pointer-events: auto;
             z-index: 45;
             opacity: 0.20;
             transition: opacity 0.30s;
-            font-size: 13px;
+            font-size: 11px;
             font-family: 'VT323', monospace;
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 40px;
+            border-radius: 30px;
             color: #88ddff;
-            padding: 4px 16px;
+            padding: 2px 12px;
             cursor: pointer;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
         }
@@ -484,22 +484,42 @@
             border-color: rgba(255, 255, 255, 0.15);
         }
 
-        @media (max-width: 700px) {
-            #top-bar .stats .item .label { display: none; }
-            #top-bar { padding: 6px 16px; margin: 8px 12px; border-radius: 30px; font-size: 13px; }
-            #top-bar .logo { font-size: 18px; }
-            .note-h { width: 50px; height: 50px; font-size: 24px; border-radius: 25px; }
-            #judge-zone { width: 16px; }
-            #card-popup { width: 170px; right: 12px; padding: 14px 16px; }
-            #bottom-controls { padding: 10px 16px; gap: 8px; border-radius: 40px; }
-            #bottom-controls button { font-size: 14px; padding: 6px 14px; }
-            #card-slot { right: 12px; bottom: 90px; }
-            .slot-card { font-size: 12px; padding: 4px 12px; }
-            #secret-export { right: 100px; bottom: 90px; font-size: 11px; }
-            #main-area { margin: 8px 12px; border-radius: 30px; }
-            #three-container { border-radius: 30px; }
-            #card-slot-area { height: 50px; gap: 8px; }
-            .slot-place { width: 50px; height: 42px; }
+        /* ===== 移动端专门适配 ===== */
+        @media (max-width: 480px) {
+            #top-bar {
+                padding: 2px 8px;
+                margin: 4px 4px 0 4px;
+                border-radius: 20px;
+                font-size: 11px;
+            }
+            .logo { font-size: 13px; gap: 2px; }
+            .logo span { font-size: 11px; }
+            .logo .suit { font-size: 14px; }
+            .stats .item { padding: 1px 6px; }
+            .stats .item .value { font-size: 13px; min-width: 16px; }
+            #main-area { margin: 4px; border-radius: 20px; }
+            #three-container { border-radius: 20px; }
+            #judge-zone { width: 10px; height: 50%; left: 10%; }
+            #judge-zone .label { font-size: 9px; letter-spacing: 2px; }
+            #card-slot-area { height: 36px; gap: 4px; padding: 2px 4px; left: 8%; right: 8%; top: 4%; }
+            .slot-place { width: 36px; height: 30px; border-radius: 16px; font-size: 8px; }
+            .slot-place.dropped { font-size: 11px; }
+            .slot-place.dropped .card-icon { font-size: 14px; }
+            .slot-place.dropped .card-name { font-size: 8px; }
+            #scroll-container-h { top: 16%; height: 66%; }
+            .note-h { width: 36px; height: 36px; border-radius: 18px; font-size: 18px; }
+            #crit-effect { font-size: 36px; }
+            #card-popup { width: 130px; right: 10px; padding: 8px 12px; }
+            #card-popup .card-title { font-size: 15px; }
+            #card-popup .card-effect { font-size: 12px; }
+            #card-popup .card-sub { font-size: 10px; }
+            #bottom-controls { padding: 4px 8px; gap: 4px; bottom: 10px; }
+            #bottom-controls button { font-size: 11px; padding: 2px 8px; }
+            #card-slot { right: 6px; bottom: 60px; gap: 4px; }
+            .slot-card { padding: 2px 8px 2px 4px; font-size: 10px; }
+            .slot-card .icon { font-size: 12px; }
+            .slot-card .name { font-size: 9px; }
+            #secret-export { right: 100px; bottom: 60px; font-size: 9px; padding: 1px 8px; }
         }
     </style>
 </head>
@@ -513,13 +533,12 @@
         <div class="logo">
             <span class="suit">✦</span>
             <span>RHYTHM·CUBE</span>
-            <span style="font-size:14px; color:rgba(180,210,230,0.30);">✦ v3.1</span>
         </div>
         <div class="stats">
-            <div class="item"><span class="label">✦ 得分</span><span class="value gold" id="scoreDisplay">0</span></div>
-            <div class="item"><span class="label">◈ 连击</span><span class="value green" id="comboDisplay">0</span></div>
-            <div class="item"><span class="label">▣ 卡牌</span><span class="value cyan" id="cardCountDisplay">0</span></div>
-            <div class="item"><span class="label">⏣ 状态</span><span class="value" id="statusDisplay" style="font-size:15px; color:rgba(180,210,230,0.40);">待命</span></div>
+            <div class="item"><span class="label">✦</span><span class="value gold" id="scoreDisplay">0</span></div>
+            <div class="item"><span class="label">◈</span><span class="value green" id="comboDisplay">0</span></div>
+            <div class="item"><span class="label">▣</span><span class="value cyan" id="cardCountDisplay">0</span></div>
+            <div class="item"><span class="label">⏣</span><span class="value" id="statusDisplay" style="font-size:13px; color:rgba(180,210,230,0.40);">待命</span></div>
         </div>
     </div>
 
@@ -533,9 +552,7 @@
             </div>
 
             <!-- 卡牌插槽区 -->
-            <div id="card-slot-area">
-                <!-- 由 JS 生成 4 个插槽 -->
-            </div>
+            <div id="card-slot-area"></div>
 
             <!-- 横向滚动容器 -->
             <div id="scroll-container-h"></div>
@@ -814,7 +831,7 @@ function buildCube() {
 buildCube();
 
 // ---- 粒子环绕 ----
-const particleCount = 800;
+const particleCount = 600;
 const particleGeo = new THREE.BufferGeometry();
 const particlePos = new Float32Array(particleCount * 3);
 const particleColors = new Float32Array(particleCount * 3);
@@ -1024,7 +1041,7 @@ window.addEventListener('resize', () => {
 window.__pulseArt = pulseArt;
 
 // ================================================================
-//  2. 卡牌系统 + 拖拽逻辑
+//  2. 卡牌系统 + 触屏拖拽
 // ================================================================
 const CARD_POOL = [
     { id: 'joker1', name: '节奏小丑', effect: '+3 暴击倍率', desc: '每次暴击额外 +3 分', icon: '✦' },
@@ -1093,27 +1110,210 @@ function updateCardSlot() {
     collectedCards.forEach((c, index) => {
         const div = document.createElement('div');
         div.className = 'slot-card';
-        div.draggable = true;
+        div.draggable = false; // 禁用 HTML5 拖拽，使用触屏
         div.dataset.cardIndex = index;
         div.dataset.cardId = c.id;
-        div.innerHTML = `<span class="icon">${c.icon}</span><span class="name">${c.name}</span><span class="effect">${c.effect}</span>`;
-        // 拖拽事件
-        div.addEventListener('dragstart', (e) => {
-            e.dataTransfer.setData('text/plain', JSON.stringify({ cardId: c.id, cardIndex: index }));
-            e.dataTransfer.effectAllowed = 'move';
-            div.style.opacity = '0.4';
-        });
-        div.addEventListener('dragend', (e) => {
-            div.style.opacity = '1';
-        });
+        div.innerHTML = `<span class="icon">${c.icon}</span><span class="name">${c.name}</span>`;
+        // 触屏拖拽事件
+        div.addEventListener('touchstart', handleTouchStart, { passive: false });
+        div.addEventListener('touchmove', handleTouchMove, { passive: false });
+        div.addEventListener('touchend', handleTouchEnd, { passive: false });
+        // 鼠标拖拽（桌面）
+        div.addEventListener('mousedown', handleMouseDown);
         slot.appendChild(div);
     });
 }
 
-// ---- 插槽区域 ----
+// ---- 拖拽状态 ----
+let dragData = null;
+let ghostElement = null;
+
+function createGhost(cardId, icon, name) {
+    const el = document.createElement('div');
+    el.style.position = 'fixed';
+    el.style.padding = '6px 12px';
+    el.style.borderRadius = '30px';
+    el.style.background = 'rgba(255,255,255,0.1)';
+    el.style.backdropFilter = 'blur(12px)';
+    el.style.border = '1px solid rgba(255,255,255,0.2)';
+    el.style.color = '#88ddff';
+    el.style.fontSize = '16px';
+    el.style.fontFamily = "'VT323', monospace";
+    el.style.pointerEvents = 'none';
+    el.style.zIndex = '999';
+    el.style.boxShadow = '0 4px 24px rgba(0,0,0,0.4)';
+    el.innerHTML = `<span>${icon}</span> <span>${name}</span>`;
+    el.dataset.cardId = cardId;
+    return el;
+}
+
+// ---- 触屏拖拽 ----
+let touchId = null;
+function handleTouchStart(e) {
+    const touch = e.touches[0];
+    const cardEl = e.currentTarget;
+    const cardId = cardEl.dataset.cardId;
+    const card = CARD_POOL.find(c => c.id === cardId);
+    if (!card) return;
+    dragData = {
+        cardId: cardId,
+        cardIndex: parseInt(cardEl.dataset.cardIndex),
+        offsetX: touch.clientX - cardEl.getBoundingClientRect().left,
+        offsetY: touch.clientY - cardEl.getBoundingClientRect().top,
+    };
+    ghostElement = createGhost(cardId, card.icon, card.name);
+    ghostElement.style.left = (touch.clientX - dragData.offsetX) + 'px';
+    ghostElement.style.top = (touch.clientY - dragData.offsetY) + 'px';
+    document.body.appendChild(ghostElement);
+    touchId = touch.identifier;
+    e.preventDefault();
+}
+
+function handleTouchMove(e) {
+    if (!dragData || !ghostElement) return;
+    const touch = Array.from(e.touches).find(t => t.identifier === touchId);
+    if (!touch) return;
+    ghostElement.style.left = (touch.clientX - dragData.offsetX) + 'px';
+    ghostElement.style.top = (touch.clientY - dragData.offsetY) + 'px';
+    // 检测是否在插槽区域
+    const slots = document.querySelectorAll('.slot-place');
+    slots.forEach(slot => {
+        const rect = slot.getBoundingClientRect();
+        const cx = touch.clientX;
+        const cy = touch.clientY;
+        const inside = cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom;
+        slot.classList.toggle('drag-over', inside);
+    });
+    e.preventDefault();
+}
+
+function handleTouchEnd(e) {
+    if (!dragData || !ghostElement) return;
+    // 检测是否放在插槽上
+    const touch = e.changedTouches[0];
+    const slots = document.querySelectorAll('.slot-place');
+    let targetSlot = null;
+    slots.forEach(slot => {
+        const rect = slot.getBoundingClientRect();
+        const cx = touch.clientX;
+        const cy = touch.clientY;
+        if (cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom) {
+            targetSlot = slot;
+        }
+        slot.classList.remove('drag-over');
+    });
+    if (targetSlot) {
+        const idx = parseInt(targetSlot.dataset.slotIndex);
+        const cardId = dragData.cardId;
+        // 检查是否已存在
+        if (slotStates.some(s => s === cardId)) {
+            showCardPopup('⚠️ 重复', '该卡牌已放置', '');
+        } else if (slotStates[idx]) {
+            showCardPopup('⚠️ 槽位已满', '请先移除其他卡牌', '');
+        } else {
+            const cardObj = CARD_POOL.find(c => c.id === cardId);
+            if (cardObj) {
+                // 从收集列表中移除
+                const collectedIdx = collectedCards.findIndex(c => c.id === cardId);
+                if (collectedIdx !== -1) {
+                    collectedCards.splice(collectedIdx, 1);
+                    slotStates[idx] = cardId;
+                    renderSlots();
+                    updateCardSlot();
+                    recalcCardEffects();
+                    showCardPopup('✅ 放置成功', cardObj.icon + ' ' + cardObj.name, '已放入音游轴');
+                }
+            }
+        }
+    }
+    // 清理
+    if (ghostElement.parentNode) ghostElement.parentNode.removeChild(ghostElement);
+    ghostElement = null;
+    dragData = null;
+    touchId = null;
+    e.preventDefault();
+}
+
+// ---- 鼠标拖拽（桌面） ----
+function handleMouseDown(e) {
+    const cardEl = e.currentTarget;
+    const cardId = cardEl.dataset.cardId;
+    const card = CARD_POOL.find(c => c.id === cardId);
+    if (!card) return;
+    const rect = cardEl.getBoundingClientRect();
+    dragData = {
+        cardId: cardId,
+        cardIndex: parseInt(cardEl.dataset.cardIndex),
+        offsetX: e.clientX - rect.left,
+        offsetY: e.clientY - rect.top,
+    };
+    ghostElement = createGhost(cardId, card.icon, card.name);
+    ghostElement.style.left = (e.clientX - dragData.offsetX) + 'px';
+    ghostElement.style.top = (e.clientY - dragData.offsetY) + 'px';
+    document.body.appendChild(ghostElement);
+
+    const onMove = (ev) => {
+        if (!dragData || !ghostElement) return;
+        ghostElement.style.left = (ev.clientX - dragData.offsetX) + 'px';
+        ghostElement.style.top = (ev.clientY - dragData.offsetY) + 'px';
+        const slots = document.querySelectorAll('.slot-place');
+        slots.forEach(slot => {
+            const rect = slot.getBoundingClientRect();
+            const cx = ev.clientX;
+            const cy = ev.clientY;
+            const inside = cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom;
+            slot.classList.toggle('drag-over', inside);
+        });
+    };
+    const onUp = (ev) => {
+        if (!dragData || !ghostElement) return;
+        const slots = document.querySelectorAll('.slot-place');
+        let targetSlot = null;
+        slots.forEach(slot => {
+            const rect = slot.getBoundingClientRect();
+            const cx = ev.clientX;
+            const cy = ev.clientY;
+            if (cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom) {
+                targetSlot = slot;
+            }
+            slot.classList.remove('drag-over');
+        });
+        if (targetSlot) {
+            const idx = parseInt(targetSlot.dataset.slotIndex);
+            const cardId = dragData.cardId;
+            if (slotStates.some(s => s === cardId)) {
+                showCardPopup('⚠️ 重复', '该卡牌已放置', '');
+            } else if (slotStates[idx]) {
+                showCardPopup('⚠️ 槽位已满', '请先移除其他卡牌', '');
+            } else {
+                const cardObj = CARD_POOL.find(c => c.id === cardId);
+                if (cardObj) {
+                    const collectedIdx = collectedCards.findIndex(c => c.id === cardId);
+                    if (collectedIdx !== -1) {
+                        collectedCards.splice(collectedIdx, 1);
+                        slotStates[idx] = cardId;
+                        renderSlots();
+                        updateCardSlot();
+                        recalcCardEffects();
+                        showCardPopup('✅ 放置成功', cardObj.icon + ' ' + cardObj.name, '已放入音游轴');
+                    }
+                }
+            }
+        }
+        if (ghostElement.parentNode) ghostElement.parentNode.removeChild(ghostElement);
+        ghostElement = null;
+        dragData = null;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+}
+
+// ---- 插槽系统 ----
 const slotArea = document.getElementById('card-slot-area');
 const NUM_SLOTS = 4;
-let slotStates = []; // 每个槽位存储 cardId 或 null
+let slotStates = [];
 
 function initSlots() {
     slotArea.innerHTML = '';
@@ -1122,48 +1322,6 @@ function initSlots() {
         slot.className = 'slot-place';
         slot.dataset.slotIndex = i;
         slot.textContent = '⬡';
-        // 拖拽目标事件
-        slot.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            slot.classList.add('drag-over');
-        });
-        slot.addEventListener('dragleave', () => {
-            slot.classList.remove('drag-over');
-        });
-        slot.addEventListener('drop', (e) => {
-            e.preventDefault();
-            slot.classList.remove('drag-over');
-            const data = e.dataTransfer.getData('text/plain');
-            if (!data) return;
-            const { cardId, cardIndex } = JSON.parse(data);
-            // 检查该卡牌是否已经在某个槽位
-            if (slotStates.some(s => s === cardId)) {
-                showCardPopup('⚠️ 重复', '该卡牌已放置', '');
-                return;
-            }
-            // 检查槽位是否已被占用
-            const idx = parseInt(slot.dataset.slotIndex);
-            if (slotStates[idx]) {
-                showCardPopup('⚠️ 槽位已满', '请先移除其他卡牌', '');
-                return;
-            }
-            // 从收集列表中移除该卡牌
-            const cardObj = collectedCards[cardIndex];
-            if (!cardObj) return;
-            // 移除卡牌效果（但保留，因为拖拽后仍然生效？我们设计为放入槽位后仍然生效，且移除卡牌图标）
-            // 但为了让槽位显示，我们从收集列表中移除该卡牌，并更新UI
-            collectedCards.splice(cardIndex, 1);
-            // 更新槽位状态
-            slotStates[idx] = cardId;
-            // 重新渲染右侧卡牌槽
-            updateCardSlot();
-            // 更新插槽显示
-            renderSlots();
-            // 重新计算卡牌效果（重新应用所有已放置的卡牌）
-            recalcCardEffects();
-            showCardPopup('✅ 放置成功', cardObj.icon + ' ' + cardObj.name, '已放入音游轴');
-        });
         slotArea.appendChild(slot);
         slotStates.push(null);
     }
@@ -1190,7 +1348,6 @@ function renderSlots() {
 }
 
 function recalcCardEffects() {
-    // 重置所有效果
     cardEffects = {
         critBonus: 0,
         comboBonus: 0,
@@ -1199,21 +1356,18 @@ function recalcCardEffects() {
         perCardBonus: 0,
         missBonus: 0,
     };
-    // 重新应用已放置的卡牌
     slotStates.forEach(cardId => {
         if (cardId) {
             applyCardEffect(cardId);
         }
     });
-    // 同时保留已收集但尚未放置的卡牌效果？我们设计为只有放置的才生效，所以不重新应用收集列表
-    // 但收集列表中的卡牌已经从列表中移除了，所以不影响
     updateHUD();
 }
 
 // ---- 横向音游引擎 ----
 const game = {
     notes: [],
-    speed: 1.2,
+    speed: 1.0,
     spawnInterval: 900,
     lastSpawn: 0,
     isRunning: false,
@@ -1252,7 +1406,7 @@ function createNoteH(char) {
     el.className = 'note-h';
     el.textContent = char;
     const containerRect = game.container.getBoundingClientRect();
-    el.style.left = (containerRect.width - 40) + 'px';
+    el.style.left = (containerRect.width - 30) + 'px';
     el.style.top = (20 + Math.random() * 60) + '%';
     game.container.appendChild(el);
     return el;
@@ -1279,10 +1433,10 @@ function updateNotesH() {
         const note = game.notes[i];
         note.x -= game.speed;
         note.element.style.left = note.x + 'px';
-        const inJudge = Math.abs(note.x - judgeX) < 30;
+        const inJudge = Math.abs(note.x - judgeX) < 25;
         note.active = inJudge;
         note.element.classList.toggle('in-judge', inJudge);
-        if (note.x < -80) {
+        if (note.x < -60) {
             if (!note.judged) {
                 game.combo = 0;
                 if (cardEffects.missBonus > 0) {
@@ -1397,12 +1551,9 @@ function resetGame() {
     game.combo = 0;
     game.maxCombo = 0;
     queue.length = 0;
-    // 重置插槽
     slotStates.fill(null);
     renderSlots();
-    // 重置卡牌效果（只保留已放置的，但已放置为空，所以全重置）
     recalcCardEffects();
-    // 重新加载默认公式
     loadFormula('U F R F D B');
     updateHUD();
     game.statusDisplay.textContent = '⏸ 待命';
@@ -1481,6 +1632,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateHUD();
     updateCardSlot();
     updateJudgeX();
+    renderSlots();
 
     document.getElementById('startBtn').addEventListener('click', startGame);
     document.getElementById('pauseBtn').addEventListener('click', togglePause);
@@ -1505,6 +1657,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else exportCSV();
     });
 
+    // 键盘事件（桌面）
     document.addEventListener('keydown', (e) => {
         const key = e.key.toUpperCase();
         if (game.isRunning && !game.isPaused) {
@@ -1538,7 +1691,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 requestAnimationFrame(gameLoopH);
 
-console.log('✦ RHYTHM·CUBE · 圆面魔方 + 横向音游 + 卡牌拖拽 ✦');
+console.log('✦ RHYTHM·CUBE · 移动优化版 ✦');
 console.log('   ⌨️  U F R D B L  → 旋转魔方 / 横向判定');
 console.log('   🃏  暴击抽卡，拖拽卡牌到音游轴插槽生效');
 console.log('   ⏣  右下角「导出」隐藏按钮');
